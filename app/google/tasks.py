@@ -1,40 +1,38 @@
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
+
+from app.llm.base import ActionItem
 
 
-class TasksClient:
-    """Pushes approved action items to Google Tasks."""
+def get_or_create_task_list(credentials, list_name: str) -> str:
+    """Return the ID of the named task list, creating it if it doesn't exist."""
+    service = build("tasks", "v1", credentials=credentials)
+    lists = service.tasklists().list().execute()
+    for lst in lists.get("items", []):
+        if lst.get("title") == list_name:
+            return lst["id"]
+    created = service.tasklists().insert(body={"title": list_name}).execute()
+    return created["id"]
 
-    def __init__(self, credentials: Credentials):
-        self.service = build("tasks", "v1", credentials=credentials)
 
-    def get_or_create_tasklist(self, title: str = "Executive Assistant") -> str:
-        """Return the task list ID, creating it if it doesn't exist."""
-        lists = self.service.tasklists().list().execute()
-        for lst in lists.get("items", []):
-            if lst["title"] == title:
-                return lst["id"]
-        new_list = self.service.tasklists().insert(body={"title": title}).execute()
-        return new_list["id"]
+def push_action_items(
+    credentials,
+    action_items: list[ActionItem],
+    list_name: str = "Executive Assistant",
+    meeting_title: str | None = None,
+) -> list[str]:
+    """Push each ActionItem to Google Tasks. Returns the list of created task IDs."""
+    service = build("tasks", "v1", credentials=credentials)
+    tasklist_id = get_or_create_task_list(credentials, list_name)
 
-    def create_task(
-        self,
-        tasklist_id: str,
-        title: str,
-        notes: str | None = None,
-        due: str | None = None,
-    ) -> dict:
-        """Create a task. due should be an RFC 3339 timestamp string."""
-        body = {"title": title}
-        if notes:
-            body["notes"] = notes
-        if due:
-            body["due"] = due
-        return self.service.tasks().insert(tasklist=tasklist_id, body=body).execute()
+    title_line = f"Meeting: {meeting_title}\n" if meeting_title else ""
+    created_ids = []
 
-    def complete_task(self, tasklist_id: str, task_id: str) -> dict:
-        return self.service.tasks().patch(
+    for item in action_items:
+        notes = f"{title_line}Timestamp: {item.timestamp}\n\n{item.context}"
+        task = service.tasks().insert(
             tasklist=tasklist_id,
-            task=task_id,
-            body={"status": "completed"},
+            body={"title": item.task, "notes": notes},
         ).execute()
+        created_ids.append(task["id"])
+
+    return created_ids
