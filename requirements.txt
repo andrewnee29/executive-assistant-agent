@@ -1,0 +1,25 @@
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Config
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# LLM providers (install only what you use)
+anthropic>=0.40.0
+openai>=1.50.0
+
+# Google APIs
+google-auth>=2.35.0
+google-auth-oauthlib>=1.2.0
+google-api-python-client>=2.150.0
+
+# Database
+sqlalchemy>=2.0.0
+aiosqlite>=0.20.0          # SQLite async driver (local dev)
+# asyncpg>=0.29.0          # Postgres driver (production — uncomment when needed)
+alembic>=1.13.0            # Migrations
+
+# Utilities
+httpx>=0.27.0              # Async HTTP client
