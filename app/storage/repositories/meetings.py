@@ -1,32 +1,88 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 
-from app.storage.database import get_session
-from app.storage.models import Meeting, Transcript
+from app.llm.base import ActionItem as ActionItemData
+from app.storage.models import ActionItem, Meeting, Recap
 
 
-class MeetingRepository:
-    def __init__(self, session: AsyncSession = Depends(get_session)):
-        self.session = session
+async def save_meeting(session: AsyncSession, meeting_dict: dict) -> Meeting:
+    """Insert a Meeting row if it doesn't exist. Returns the Meeting object."""
+    existing = await session.get(Meeting, meeting_dict["conference_id"])
+    if existing:
+        return existing
+    meeting = Meeting(
+        id=meeting_dict["conference_id"],
+        title=meeting_dict.get("title"),
+        date=meeting_dict.get("start_time"),
+        participants=meeting_dict.get("participants", []),
+        duration_seconds=meeting_dict.get("duration_seconds"),
+    )
+    session.add(meeting)
+    await session.commit()
+    return meeting
 
-    async def list_all(self) -> list[Meeting]:
-        result = await self.session.execute(
-            select(Meeting).order_by(Meeting.started_at.desc())
+
+async def get_unprocessed_meetings(session: AsyncSession) -> list[Meeting]:
+    """Return all meetings not yet processed."""
+    result = await session.execute(
+        select(Meeting).where(Meeting.processed == False).order_by(Meeting.date)
+    )
+    return list(result.scalars().all())
+
+
+async def save_recap(
+    session: AsyncSession,
+    meeting_id: str,
+    summary: str,
+    uncertainties: list[str],
+) -> Recap:
+    """Insert an approved Recap row with approved_at set to now."""
+    recap = Recap(
+        meeting_id=meeting_id,
+        summary=summary,
+        uncertainties=uncertainties,
+        approved_at=datetime.utcnow(),
+    )
+    session.add(recap)
+    await session.commit()
+    return recap
+
+
+async def save_action_items(
+    session: AsyncSession,
+    meeting_id: str,
+    action_items: list[ActionItemData],
+) -> list[ActionItem]:
+    """Insert one ActionItem row per item. Returns the inserted rows."""
+    rows = [
+        ActionItem(
+            meeting_id=meeting_id,
+            task=item.task,
+            timestamp=item.timestamp,
+            context=item.context,
         )
-        return result.scalars().all()
+        for item in action_items
+    ]
+    session.add_all(rows)
+    await session.commit()
+    return rows
 
-    async def get_by_id(self, meeting_id: str) -> Meeting | None:
-        return await self.session.get(Meeting, meeting_id)
 
-    async def get_transcript(self, meeting_id: str) -> Transcript | None:
-        result = await self.session.execute(
-            select(Transcript).where(Transcript.meeting_id == meeting_id)
-        )
-        return result.scalar_one_or_none()
+async def mark_meeting_processed(session: AsyncSession, meeting_id: str) -> None:
+    """Set processed=True on the Meeting row."""
+    meeting = await session.get(Meeting, meeting_id)
+    if meeting:
+        meeting.processed = True
+        await session.commit()
 
-    async def upsert(self, meeting: Meeting) -> Meeting:
-        self.session.add(meeting)
-        await self.session.commit()
-        await self.session.refresh(meeting)
-        return meeting
+
+async def update_task_id(
+    session: AsyncSession, action_item_id: int, tasks_id: str
+) -> None:
+    """Store the Google Tasks ID on an ActionItem after a successful push."""
+    item = await session.get(ActionItem, action_item_id)
+    if item:
+        item.tasks_id = tasks_id
+        await session.commit()

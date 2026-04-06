@@ -1,39 +1,112 @@
-import uuid
-from fastapi import Depends
+import re
 
-from app.config import Settings, get_settings
-from app.llm.base import LLMProvider, Message
-from app.llm.factory import get_llm_provider
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.context_manager import load_people, load_terms
+from app.core.meeting_processor import ProcessedMeeting, process_meeting
+from app.google.meet import fetch_transcript, match_calendar_title
+from app.google.tasks import push_action_items
+from app.storage.repositories.meetings import (
+    get_unprocessed_meetings,
+    mark_meeting_processed,
+    save_action_items,
+    save_recap,
+)
+
+# Temporary in-process session state: user_name -> last ProcessedMeeting + meeting_id
+_pending: dict[str, tuple[str, ProcessedMeeting]] = {}
 
 
-class AgentOrchestrator:
-    """Routes user messages to the appropriate workflow and returns replies."""
+async def handle_message(
+    session: AsyncSession,
+    credentials,
+    user_message: str,
+    user_name: str = "the user",
+) -> str:
+    msg = user_message.lower()
 
-    def __init__(self, settings: Settings = Depends(get_settings)):
-        self.llm: LLMProvider = get_llm_provider(settings)
+    # ------------------------------------------------------------------ #
+    # 1. List unprocessed meetings                                         #
+    # ------------------------------------------------------------------ #
+    if any(kw in msg for kw in ("what's new", "whats new", "unprocessed", "meetings")):
+        meetings = await get_unprocessed_meetings(session)
+        if not meetings:
+            return "All caught up — no unprocessed meetings."
+        lines = [f"You have {len(meetings)} unprocessed meeting(s):"]
+        for i, m in enumerate(meetings, 1):
+            date_str = m.date.strftime("%Y-%m-%d") if m.date else "unknown date"
+            title = m.title or m.id
+            lines.append(f"{i}. {title} ({date_str})")
+        return "\n".join(lines)
 
-    async def handle_message(
-        self, user_message: str, conversation_id: str | None = None
-    ) -> tuple[str, str]:
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
+    # ------------------------------------------------------------------ #
+    # 2. Process a meeting by index                                        #
+    # ------------------------------------------------------------------ #
+    if "recap" in msg:
+        match = re.search(r"\d+", msg)
+        if not match:
+            return "Which meeting? Try: recap 1"
+        index = int(match.group()) - 1
 
-        # TODO: load conversation history from storage
-        history: list[Message] = []
-        history.append(Message(role="user", content=user_message))
+        meetings = await get_unprocessed_meetings(session)
+        if index < 0 or index >= len(meetings):
+            return f"No meeting at position {index + 1}. You have {len(meetings)} unprocessed meeting(s)."
 
-        response = await self.llm.complete(
-            messages=history,
-            system=self._system_prompt(),
+        meeting = meetings[index]
+        transcript = fetch_transcript(credentials, meeting.id)
+        if not transcript:
+            return f"No transcript available yet for '{meeting.title or meeting.id}'. Try again in a few minutes."
+
+        people = await load_people(session)
+        terms = await load_terms(session)
+
+        result = await process_meeting(
+            transcript=transcript,
+            meeting_title=meeting.title,
+            people=people,
+            terms=terms,
+            user_name=user_name,
         )
 
-        # TODO: persist assistant message to storage
-        return response.content, conversation_id
+        _pending[user_name] = (meeting.id, result)
+        return _format_result(result)
 
-    def _system_prompt(self) -> str:
-        # TODO: load from reference/system-prompt.md and inject dynamic context
+    # ------------------------------------------------------------------ #
+    # 3. Approve the last processed meeting                                #
+    # ------------------------------------------------------------------ #
+    if "approve" in msg:
+        if user_name not in _pending:
+            return "Nothing pending approval. Run a recap first."
+
+        meeting_id, result = _pending.pop(user_name)
+        await save_recap(session, meeting_id, result.summary, result.uncertainties)
+        saved_items = await save_action_items(session, meeting_id, result.action_items)
+        push_action_items(credentials, result.action_items, meeting_title=meeting_id)
+        await mark_meeting_processed(session, meeting_id)
+
         return (
-            "You are an executive assistant agent. You help the user process "
-            "meeting transcripts, generate recaps, extract action items, and "
-            "manage their professional context."
+            f"Saved. {len(saved_items)} action item(s) pushed to Google Tasks."
         )
+
+    # ------------------------------------------------------------------ #
+    # 4. Fallback                                                          #
+    # ------------------------------------------------------------------ #
+    return "I can help you recap meetings. Try asking: what's new, recap 1, or approve."
+
+
+def _format_result(result: ProcessedMeeting) -> str:
+    lines = ["**Recap**", result.summary]
+
+    if result.uncertainties:
+        lines += ["", "**Uncertainties to review:**"]
+        lines += [f"- {u}" for u in result.uncertainties]
+
+    if result.action_items:
+        lines += ["", "**Action items:**"]
+        for item in result.action_items:
+            lines.append(f"- [{item.timestamp}] {item.task}")
+    else:
+        lines += ["", "No action items found."]
+
+    lines += ["", "Reply **approve** to save and push to Google Tasks."]
+    return "\n".join(lines)
