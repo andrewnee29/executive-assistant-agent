@@ -1,8 +1,10 @@
-import json
+import base64
+import hashlib
 import os
+import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from sqlalchemy import select
@@ -19,6 +21,9 @@ _SCOPES = [
     "https://www.googleapis.com/auth/admin.directory.user.readonly",
     "https://www.googleapis.com/auth/tasks",
 ]
+
+# state -> {"verifier": str}  — cleared on callback
+_pkce_store: dict[str, dict] = {}
 
 
 def _build_flow() -> Flow:
@@ -37,17 +42,40 @@ def _build_flow() -> Flow:
     )
 
 
+def _generate_pkce() -> tuple[str, str]:
+    """Return (code_verifier, code_challenge) using S256."""
+    verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(verifier.encode()).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    return verifier, challenge
+
+
 @router.get("/login")
 async def login():
+    verifier, challenge = _generate_pkce()
     flow = _build_flow()
-    auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+    auth_url, state = flow.authorization_url(
+        prompt="consent",
+        access_type="offline",
+        code_challenge=challenge,
+        code_challenge_method="S256",
+    )
+    _pkce_store[state] = {"verifier": verifier}
     return RedirectResponse(url=auth_url)
 
 
 @router.get("/callback")
-async def callback(code: str, session: AsyncSession = Depends(get_session)):
+async def callback(
+    code: str,
+    state: str,
+    session: AsyncSession = Depends(get_session),
+):
+    pkce = _pkce_store.pop(state, None)
+    if pkce is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state.")
+
     flow = _build_flow()
-    flow.fetch_token(code=code)
+    flow.fetch_token(code=code, code_verifier=pkce["verifier"])
     creds = flow.credentials
 
     creds_dict = {
