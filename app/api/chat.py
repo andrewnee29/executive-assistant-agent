@@ -1,35 +1,49 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from google.oauth2.credentials import Credentials
 
-from app.core.agent import AgentOrchestrator
+from app.core.agent import handle_message
+from app.storage.database import get_session
+from app.storage.models import UserCredentials
 
 router = APIRouter()
 
 
-class ChatMessage(BaseModel):
+class ChatRequest(BaseModel):
     message: str
-    conversation_id: str | None = None
 
 
 class ChatResponse(BaseModel):
     reply: str
-    conversation_id: str
 
 
-@router.post("/message", response_model=ChatResponse)
-async def send_message(
-    body: ChatMessage,
-    agent: AgentOrchestrator = Depends(AgentOrchestrator),
-):
-    """Send a message to the agent and receive a reply."""
-    reply, conversation_id = await agent.handle_message(
-        body.message, body.conversation_id
+@router.post("", response_model=ChatResponse)
+async def chat(body: ChatRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(UserCredentials).where(UserCredentials.user_id == "default")
     )
-    return ChatResponse(reply=reply, conversation_id=conversation_id)
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated. Visit /auth/login first.",
+        )
 
+    c = row.credentials_json
+    credentials = Credentials(
+        token=c["token"],
+        refresh_token=c.get("refresh_token"),
+        token_uri=c.get("token_uri"),
+        client_id=c.get("client_id"),
+        client_secret=c.get("client_secret"),
+        scopes=c.get("scopes"),
+    )
 
-@router.get("/history/{conversation_id}")
-async def get_history(conversation_id: str):
-    """Retrieve conversation history."""
-    # TODO: fetch from storage
-    return {"conversation_id": conversation_id, "messages": []}
+    reply = await handle_message(
+        session=session,
+        credentials=credentials,
+        user_message=body.message,
+    )
+    return ChatResponse(reply=reply)

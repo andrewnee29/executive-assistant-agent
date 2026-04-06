@@ -1,37 +1,68 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from datetime import datetime
 
-from app.storage.repositories.meetings import MeetingRepository
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.storage.database import get_session
+from app.storage.models import ActionItem, Meeting, Recap
 
 router = APIRouter()
 
 
-@router.get("/")
-async def list_meetings(repo: MeetingRepository = Depends()):
-    """List all discovered meetings."""
-    return await repo.list_all()
+class MeetingSummary(BaseModel):
+    id: str
+    title: str | None
+    date: datetime | None
+    participants: list[str]
+    duration_seconds: int | None
+    processed: bool
+
+    class Config:
+        from_attributes = True
 
 
-@router.get("/{meeting_id}")
-async def get_meeting(meeting_id: str, repo: MeetingRepository = Depends()):
-    """Get a single meeting with its recap and transcript."""
-    meeting = await repo.get_by_id(meeting_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-    return meeting
+class RecapResponse(BaseModel):
+    summary: str
+    uncertainties: list[str]
+    approved_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
-@router.get("/{meeting_id}/transcript")
-async def get_transcript(meeting_id: str, repo: MeetingRepository = Depends()):
-    """Get the raw transcript for a meeting."""
-    transcript = await repo.get_transcript(meeting_id)
-    if not transcript:
-        raise HTTPException(status_code=404, detail="Transcript not found")
-    return transcript
+class ActionItemResponse(BaseModel):
+    id: int
+    task: str
+    timestamp: str | None
+    context: str | None
+    done: bool
+
+    class Config:
+        from_attributes = True
 
 
-@router.post("/{meeting_id}/recap")
-async def approve_recap(meeting_id: str, recap: dict):
-    """User approves and saves the agent-generated recap."""
-    # TODO: validate and persist
-    return {"status": "saved", "meeting_id": meeting_id}
+@router.get("", response_model=list[MeetingSummary])
+async def list_meetings(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Meeting).order_by(Meeting.date.desc()))
+    return result.scalars().all()
+
+
+@router.get("/{meeting_id}/recap", response_model=RecapResponse)
+async def get_recap(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(Recap).where(Recap.meeting_id == meeting_id)
+    )
+    recap = result.scalar_one_or_none()
+    if not recap:
+        raise HTTPException(status_code=404, detail="No recap found for this meeting.")
+    return recap
+
+
+@router.get("/{meeting_id}/action-items", response_model=list[ActionItemResponse])
+async def get_action_items(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(ActionItem).where(ActionItem.meeting_id == meeting_id)
+    )
+    return result.scalars().all()

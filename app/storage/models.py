@@ -66,3 +66,13 @@ class Term(Base):
     term = Column(String, nullable=False)
     definition = Column(String)
     category = Column(String)
+
+
+class UserCredentials(Base):
+    __tablename__ = "user_credentials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Single-user MVP: one row, always user_id = "default"
+    user_id = Column(String, unique=True, nullable=False, default="default")
+    credentials_json = Column(JSON, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)

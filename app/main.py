@@ -1,15 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import get_settings
-from app.api import auth, chat, meetings, actions
+from app.api import auth, chat, meetings
+from app.storage.database import init_db
 
-settings = get_settings()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
 
 app = FastAPI(
-    title=settings.app_name,
+    title="Executive Assistant Agent",
     description="Meeting intelligence agent powered by Google Workspace and AI.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -23,7 +31,6 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(meetings.router, prefix="/meetings", tags=["meetings"])
-app.include_router(actions.router, prefix="/actions", tags=["actions"])
 
 
 @app.get("/health")
