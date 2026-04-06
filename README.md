@@ -1,83 +1,108 @@
 # Executive Assistant Agent
 
-A cloud-hosted meeting intelligence agent that connects to Google Workspace, automatically discovers and transcribes meetings, generates narrative recaps, extracts action items, and continuously learns about the people and topics in your professional world.
+A meeting intelligence system that connects to Google Workspace, discovers completed Google Meet calls, fetches their transcripts, and uses an AI model to generate narrative recaps and extract action items. You interact with it through a chat UI — ask what meetings you have, run a recap, review it, and approve it to save to the database and push action items to Google Tasks.
+
+## Status
+
+Working locally. The chat UI, recap generation, action item extraction, and Google Tasks push are all functional. Google Meet transcript access requires a Google Workspace paid plan (Business Standard or higher), so local testing uses JSON transcript files instead of the live API.
+
+## Setup
+
+```bash
+git clone <repo>
+cd executive-assistant-agent
+
+conda create -n executive-assistant python=3.11
+conda activate executive-assistant
+
+pip install -r requirements.txt
+
+cp .env.example .env
+# Fill in the values — see "API Keys" below
+
+mkdir data
+
+uvicorn app.main:app --reload
+```
+
+Open http://localhost:8000 to see the chat UI.
+
+## API Keys
+
+**Anthropic API key** (`ANTHROPIC_API_KEY`)
+Get one at https://console.anthropic.com. The app defaults to Claude Opus for recap generation and Haiku for extraction tasks.
+
+**Google OAuth credentials** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Create an OAuth 2.0 Web Client
+3. Add `http://localhost:8000/auth/callback` as an authorized redirect URI
+4. Enable these APIs in your project: Google Meet API, Google Calendar API, Admin SDK API, Google Tasks API
+
+## Testing Without Google Meet
+
+You don't need a Google Workspace account to test the core flow. A fake meeting and transcript are included.
+
+```bash
+python -m scripts.seed_test_data
+```
+
+Then open http://localhost:8000 and try:
+- `what's new` — lists unprocessed meetings
+- `recap 1` — generates a recap using the local transcript file
+- `approve` — saves the recap and action items, pushes to Google Tasks
+
+To run the test again: `python -m scripts.reset_test_meeting`
+
+## Switching LLM Providers
+
+Change two lines in `.env`:
+
+```env
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+OPENAI_API_KEY=your-key-here
+```
+
+No code changes needed. Any model supported by the provider works.
 
 ## Project Structure
 
 ```
 app/
-├── main.py              # FastAPI entry point, router registration
-├── config.py            # Settings loaded from .env via pydantic-settings
-│
-├── api/                 # HTTP route handlers (thin — delegate to core/)
-│   ├── auth.py          # Google OAuth login/callback
-│   ├── chat.py          # Chat interface endpoints
-│   ├── meetings.py      # Meeting list, detail, recap approval
-│   └── actions.py       # Action item management + Google Tasks push
-│
-├── core/                # Business logic (no HTTP, no DB details)
-│   ├── agent.py         # Orchestrator: routes chat messages to workflows
-│   ├── meeting_processor.py   # Recap generation (single-pass + chunked)
-│   ├── context_manager.py     # People/terms knowledge base management
-│   └── action_items.py        # Action item extraction with timestamp citations
-│
-├── llm/                 # AI provider abstraction layer
-│   ├── base.py          # LLMProvider abstract class (Message, LLMResponse types)
-│   ├── anthropic_provider.py  # Anthropic Claude implementation
-│   ├── openai_provider.py     # OpenAI implementation
-│   └── factory.py       # get_llm_provider(settings) — reads LLM_PROVIDER from .env
-│
-├── google/              # Google API clients (one file per API)
-│   ├── auth.py          # OAuth flow (scopes, token exchange)
-│   ├── meet.py          # Conference records + transcript entries
-│   ├── calendar.py      # Event lookup for meeting title matching
-│   ├── directory.py     # People lookup for name/role resolution
-│   └── tasks.py         # Push action items to Google Tasks
-│
-└── storage/             # Data persistence
-    ├── models.py        # SQLAlchemy models: Meeting, Transcript, ActionItem, Person, Term
-    ├── database.py      # Async engine + session factory
-    └── repositories/    # Data access — one class per model
-        ├── meetings.py
-        └── action_items.py
+  main.py               Entry point — FastAPI app, router registration, DB init on startup
+  config.py             Settings loaded from .env
+  api/
+    auth.py             Google OAuth login/callback/logout (with PKCE)
+    chat.py             POST /chat — receives messages, calls the agent
+    meetings.py         GET /meetings, GET /meetings/{id}/recap, POST /meetings/discover
+  core/
+    agent.py            Routes chat messages to the right workflow
+    meeting_processor.py  Single-pass and chunked recap generation
+    context_manager.py  Loads people and terms from the database for use as LLM context
+  llm/
+    base.py             Abstract LLMProvider interface and all input/output dataclasses
+    anthropic_provider.py  Claude implementation
+    openai_provider.py  OpenAI implementation
+    factory.py          Reads LLM_PROVIDER from env, returns the right provider instance
+  google/
+    meet.py             Fetches conference records and transcripts from Google Meet API
+    tasks.py            Pushes action items to Google Tasks
+    auth.py             OAuth scope definitions and token exchange
+  storage/
+    models.py           SQLAlchemy models: Meeting, Recap, ActionItem, Person, Term, UserCredentials
+    database.py         Async engine and session factory
+    repositories/
+      meetings.py       DB access functions for meetings, recaps, and action items
+
+app/static/index.html   Chat UI — dark-themed, no framework, single file
+
+scripts/
+  seed_test_data.py     Inserts a fake meeting and transcript for local testing
+  reset_test_meeting.py Resets the test meeting to unprocessed
+
+data/
+  app.db                SQLite database (created on first run)
+  transcripts/          Local transcript JSON files (fallback when Meet API isn't available)
+
+reference/              Original system prompts, skill specs, and example outputs
 ```
-
-## Swapping LLM Providers
-
-Change two lines in `.env` — no code changes needed:
-
-```env
-LLM_PROVIDER=openai      # or "anthropic"
-LLM_MODEL=gpt-4o         # any model supported by that provider
-```
-
-All LLM calls go through `app/llm/base.py:LLMProvider`. Add a new provider by implementing that interface and registering it in `app/llm/factory.py`.
-
-## Getting Started
-
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Configure environment
-cp .env.example .env
-# Fill in ANTHROPIC_API_KEY (or OPENAI_API_KEY), GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-
-# 3. Run the server
-uvicorn app.main:app --reload
-
-# 4. Authenticate with Google
-# Open http://localhost:8000/auth/login in your browser
-```
-
-## Reference Materials
-
-| File | Purpose |
-|------|---------|
-| `PRD.md` | Functional requirements and acceptance criteria |
-| `ARCHITECTURE-NOTES.md` | Key design decisions and trade-offs |
-| `reference/system-prompt.md` | Agent personality and behavior contract |
-| `reference/skills/` | Detailed logic for each capability |
-| `reference/extraction/` | Meeting discovery and transcript fetching |
-| `reference/examples/` | Sample outputs — what good looks like |
-| `reference/schemas/` | Data formats and naming conventions |
