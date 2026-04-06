@@ -1,8 +1,12 @@
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from googleapiclient.discovery import build
 
 from app.llm.base import TranscriptEntry
+
+_LOCAL_TRANSCRIPTS = Path("data/transcripts")
 
 # Non-meeting event types to skip when searching calendar
 _SKIP_EVENT_TYPES = {"focusTime", "outOfOffice", "workingLocation"}
@@ -62,8 +66,21 @@ def list_meetings(credentials, window_start: datetime, window_end: datetime) -> 
 def fetch_transcript(credentials, conference_id: str) -> list[TranscriptEntry]:
     """Return transcript entries for a conference, or [] if not yet available.
 
-    Only reads transcripts with state FILE_GENERATED. Handles pagination.
+    Checks data/transcripts/{conference_id}.json first — use this for local
+    testing without real Google Meet credentials. Falls back to the Meet API.
     """
+    local_path = _LOCAL_TRANSCRIPTS / f"{conference_id}.json"
+    if local_path.exists():
+        raw = json.loads(local_path.read_text(encoding="utf-8"))
+        return [
+            TranscriptEntry(
+                timestamp=entry["timestamp"],
+                speaker=entry["speaker"],
+                text=entry["text"],
+            )
+            for entry in raw
+        ]
+
     meet = build("meet", "v2", credentials=credentials)
     parent = f"conferenceRecords/{conference_id}"
 

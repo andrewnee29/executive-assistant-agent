@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Executive Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #container {
+      width: 100%;
+      max-width: 720px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 18px 20px 14px;
+      font-weight: 600;
+      font-size: 16px;
+      color: #94a3b8;
+      border-bottom: 1px solid #1e2433;
+      flex-shrink: 0;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 88%;
+    }
+
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg.user .bubble {
+      background: #2563eb;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.assistant .bubble {
+      background: #1e2433;
+      color: #e2e8f0;
+      border-bottom-left-radius: 4px;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #475569;
+      padding: 0 4px;
+    }
+
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 14px;
+      background: #1e2433;
+      border-radius: 14px;
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      background: #64748b;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+    }
+
+    #input-row {
+      padding: 14px 20px 20px;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #1e2433;
+      flex-shrink: 0;
+    }
+
+    #input {
+      flex: 1;
+      background: #1e2433;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 15px;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      line-height: 1.4;
+    }
+
+    #input:focus { border-color: #3b82f6; }
+    #input::placeholder { color: #475569; }
+
+    #send {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.15s;
+      align-self: flex-end;
+    }
+
+    #send:hover { background: #1d4ed8; }
+    #send:disabled { background: #1e2d50; cursor: default; color: #64748b; }
+
+    .bubble b { color: #93c5fd; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <header>Executive Assistant</header>
+  <div id="messages"></div>
+  <div id="input-row">
+    <textarea id="input" rows="1" placeholder="Ask about your meetings…"></textarea>
+    <button id="send">Send</button>
+  </div>
+</div>
+
+<script>
+  const messagesEl = document.getElementById("messages");
+  const inputEl    = document.getElementById("input");
+  const sendBtn    = document.getElementById("send");
+
+  function formatMarkdown(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  }
+
+  function addMessage(role, text) {
+    const wrapper = document.createElement("div");
+    wrapper.className = `msg ${role}`;
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = role === "user" ? "You" : "Assistant";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = formatMarkdown(text);
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return wrapper;
+  }
+
+  function showTyping() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "msg assistant";
+    wrapper.id = "typing";
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = "Assistant";
+
+    const typing = document.createElement("div");
+    typing.className = "typing";
+    typing.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(typing);
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typing");
+    if (el) el.remove();
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    addMessage("user", text);
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+    sendBtn.disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      removeTyping();
+      if (res.ok) {
+        addMessage("assistant", data.reply ?? data.detail ?? "No response.");
+      } else {
+        addMessage("assistant", `Error: ${data.detail ?? res.statusText}`);
+      }
+    } catch (err) {
+      removeTyping();
+      addMessage("assistant", `Network error: ${err.message}`);
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  // Auto-resize textarea
+  inputEl.addEventListener("input", () => {
+    inputEl.style.height = "auto";
+    inputEl.style.height = `${inputEl.scrollHeight}px`;
+  });
+
+  // Send on Enter (Shift+Enter for newline)
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(inputEl.value);
+    }
+  });
+
+  sendBtn.addEventListener("click", () => sendMessage(inputEl.value));
+
+  // Greet on load
+  sendMessage("what's new");
+</script>
+</body>
+</html>
