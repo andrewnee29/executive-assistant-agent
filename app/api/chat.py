@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -45,5 +47,6 @@ async def chat(body: ChatRequest, session: AsyncSession = Depends(get_session)):
         session=session,
         credentials=credentials,
         user_message=body.message,
+        user_name=os.environ.get("USER_NAME", "the user"),
     )
     return ChatResponse(reply=reply)

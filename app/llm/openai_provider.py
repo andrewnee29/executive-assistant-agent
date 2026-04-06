@@ -154,14 +154,19 @@ class OpenAIProvider(LLMProvider):
 
         raw = response.choices[0].message.content
         try:
-            # json_object mode may wrap the array in an object key
-            data = json.loads(raw)
-            if isinstance(data, dict):
-                data = next(iter(data.values()))
+            parsed = json.loads(raw)
         except json.JSONDecodeError as e:
             raise RuntimeError(
                 f"extract_action_items: model returned invalid JSON — {e}\nRaw: {raw}"
             ) from e
+
+        if isinstance(parsed, list):
+            data = parsed
+        elif isinstance(parsed, dict):
+            # json_object mode wraps the array under some key; find the first list value
+            data = next((v for v in parsed.values() if isinstance(v, list)), [])
+        else:
+            data = []
 
         items = [
             ActionItem(

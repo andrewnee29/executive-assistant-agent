@@ -47,15 +47,17 @@ async def main() -> None:
         transcript_path.parent.mkdir(parents=True, exist_ok=True)
         transcript = [
             {"timestamp": "00:00:09", "speaker": "Sarah Chen",  "text": "Hey Andrew, glad we could sync. I want to make sure we're aligned on the plan before anyone starts building."},
-            {"timestamp": "00:00:19", "speaker": "Andrew Nee",  "text": "Same. I read through the brief this morning. I think the core feature set is clear, but I want to nail down the data model before we write a line of code."},
-            {"timestamp": "00:00:32", "speaker": "Sarah Chen",  "text": "Agreed. Can you own the data model doc? Just a one-pager — entities, relationships, and any constraints we know about. That'll unblock the backend work."},
-            {"timestamp": "00:00:45", "speaker": "Andrew Nee",  "text": "Yes, I'll write that up and share it by Thursday. I'll put it in the shared drive under the project folder."},
-            {"timestamp": "00:01:01", "speaker": "Sarah Chen",  "text": "Perfect. On the repo side — do we have a structure decided? Monorepo or separate frontend and backend repos?"},
-            {"timestamp": "00:01:12", "speaker": "Andrew Nee",  "text": "I'd lean monorepo for now given the team size. Less overhead. I'll go ahead and set up the repo with the initial folder structure and CI config this week."},
-            {"timestamp": "00:01:28", "speaker": "Sarah Chen",  "text": "Great. Make sure to add branch protection on main and require PR reviews before merge. We got burned on that last project."},
-            {"timestamp": "00:01:38", "speaker": "Andrew Nee",  "text": "Will do — I'll configure branch protection and add you and Marcus as required reviewers when I set it up."},
-            {"timestamp": "00:01:52", "speaker": "Sarah Chen",  "text": "One more thing — we should loop in the design team early so they're not a bottleneck later. Can you schedule a kickoff with them for next week?"},
-            {"timestamp": "00:02:05", "speaker": "Andrew Nee",  "text": "On it. I'll send a calendar invite to the design team for early next week and include the brief so they have context going in."},
+            {"timestamp": "00:00:18", "speaker": "Andrew Nee",  "text": "Same. I read through the brief this morning. Core feature set looks clear. I think we need a data model doc before anyone touches code though."},
+            {"timestamp": "00:00:31", "speaker": "Sarah Chen",  "text": "Totally agree. Andrew, can you own that? Just a one-pager — entities, relationships, key constraints. By Thursday so it unblocks the backend team."},
+            {"timestamp": "00:00:43", "speaker": "Andrew Nee",  "text": "Yes, I'll write the data model doc and post it in the shared drive by Thursday."},
+            {"timestamp": "00:00:52", "speaker": "Sarah Chen",  "text": "Perfect. So action item one for you: write and share the data model doc by Thursday. Got it."},
+            {"timestamp": "00:01:04", "speaker": "Sarah Chen",  "text": "Next — repo setup. Monorepo okay with you? I want CI and branch protection in place before anyone starts committing."},
+            {"timestamp": "00:01:14", "speaker": "Andrew Nee",  "text": "Monorepo works. I'll set up the repo with folder structure, CI config, and branch protection on main this week. I'll add you and Marcus as required reviewers."},
+            {"timestamp": "00:01:28", "speaker": "Sarah Chen",  "text": "Great. So your second action item is to set up the GitHub repo with CI and branch protection by end of this week. Confirmed?"},
+            {"timestamp": "00:01:36", "speaker": "Andrew Nee",  "text": "Confirmed, I'll have it done by Friday."},
+            {"timestamp": "00:01:45", "speaker": "Sarah Chen",  "text": "Last thing — design team needs to be looped in early. Andrew, can you schedule a kickoff with them for next week and include the brief so they have context?"},
+            {"timestamp": "00:01:57", "speaker": "Andrew Nee",  "text": "Yes, I'll send a calendar invite to the design team for early next week with the brief attached."},
+            {"timestamp": "00:02:08", "speaker": "Sarah Chen",  "text": "So action item three for Andrew: schedule the design kickoff for next week and share the brief with them. That's everything — thanks Andrew."},
         ]
         transcript_path.write_text(
             json.dumps(transcript, indent=2, ensure_ascii=False), encoding="utf-8"

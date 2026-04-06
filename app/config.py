@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Executive Assistant Agent"
     debug: bool = False
     secret_key: str
+    user_name: str = "the user"
 
     # LLM Provider ("anthropic" or "openai")
     llm_provider: str = "anthropic"
