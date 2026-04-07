@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 
 from app.llm.base import TranscriptEntry
 
-_LOCAL_TRANSCRIPTS = Path("data/transcripts")
+_LOCAL_TRANSCRIPTS = Path(__file__).parent.parent.parent / "data" / "transcripts"
 
 # Non-meeting event types to skip when searching calendar
 _SKIP_EVENT_TYPES = {"focusTime", "outOfOffice", "workingLocation"}
