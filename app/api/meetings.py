@@ -118,30 +118,39 @@ _DEFAULT_TRANSCRIPT = [
 
 
 class SeedBody(BaseModel):
+    meeting_id: str = "test-meeting-001"
+    title: str = "Andrew - Project Planning"
+    participants: list[str] = ["Andrew Nee", "Sarah Chen"]
     transcript: list[dict] | None = None
 
 
 @router.post("/seed")
 async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depends(get_session)):
-    meeting_id = "test-meeting-001"
+    body = body or SeedBody()
+    meeting_id = body.meeting_id
+    title = body.title
 
-    # Insert meeting row if it doesn't exist
+    # Upsert Meeting row
     result = await session.execute(select(Meeting).where(Meeting.id == meeting_id))
-    if result.scalar_one_or_none() is None:
+    row = result.scalar_one_or_none()
+    if row is None:
         session.add(Meeting(
             id=meeting_id,
-            title="Andrew - Project Planning",
+            title=title,
             date=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
-            participants=["Andrew Nee", "Sarah Chen"],
+            participants=body.participants,
             duration_seconds=1800,
             processed=False,
         ))
-        await session.commit()
+    else:
+        row.title = title
+        row.participants = body.participants
+    await session.commit()
 
     # Resolve transcript
-    entries = (body.transcript if body and body.transcript else None) or _DEFAULT_TRANSCRIPT
+    entries = body.transcript or _DEFAULT_TRANSCRIPT
 
-    # Upsert into TranscriptStore
+    # Upsert TranscriptStore row
     result2 = await session.execute(
         select(TranscriptStore).where(TranscriptStore.meeting_id == meeting_id)
     )
@@ -152,4 +161,4 @@ async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depen
         session.add(TranscriptStore(meeting_id=meeting_id, entries_json=entries))
     await session.commit()
 
-    return {"meeting_id": meeting_id, "transcript_entries_written": len(entries)}
+    return {"meeting_id": meeting_id, "title": title, "transcript_entries_written": len(entries)}
