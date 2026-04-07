@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from googleapiclient.discovery import build
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.base import TranscriptEntry
+from app.storage.models import TranscriptStore
 
 # Non-meeting event types to skip when searching calendar
 _SKIP_EVENT_TYPES = {"focusTime", "outOfOffice", "workingLocation"}
@@ -59,21 +63,28 @@ def list_meetings(credentials, window_start: datetime, window_end: datetime) -> 
     return _dedup_by_space(candidates)
 
 
-def fetch_transcript(credentials, conference_id: str, transcript_json=None) -> list[TranscriptEntry]:
+async def fetch_transcript(
+    credentials, conference_id: str, session: Optional[AsyncSession] = None
+) -> list[TranscriptEntry]:
     """Return transcript entries for a conference, or [] if not yet available.
 
-    If transcript_json is provided (a list of dicts from the database), parse
-    and return it directly. Otherwise falls back to the Meet API.
+    If session is provided, checks TranscriptStore first and returns stored
+    entries without hitting the Google API. Falls back to the Meet API.
     """
-    if transcript_json is not None:
-        return [
-            TranscriptEntry(
-                timestamp=entry["timestamp"],
-                speaker=entry["speaker"],
-                text=entry["text"],
-            )
-            for entry in transcript_json
-        ]
+    if session is not None:
+        result = await session.execute(
+            select(TranscriptStore).where(TranscriptStore.meeting_id == conference_id)
+        )
+        row = result.scalar_one_or_none()
+        if row is not None:
+            return [
+                TranscriptEntry(
+                    timestamp=entry["timestamp"],
+                    speaker=entry["speaker"],
+                    text=entry["text"],
+                )
+                for entry in row.entries_json
+            ]
 
     meet = build("meet", "v2", credentials=credentials)
     parent = f"conferenceRecords/{conference_id}"

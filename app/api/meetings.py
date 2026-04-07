@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.google.meet import list_meetings as google_list_meetings, match_calendar_title
 from app.storage.database import get_session
-from app.storage.models import ActionItem, Meeting, Recap, UserCredentials
+from app.storage.models import ActionItem, Meeting, Recap, TranscriptStore, UserCredentials
 from app.storage.repositories.meetings import save_meeting
 
 router = APIRouter()
@@ -141,10 +141,15 @@ async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depen
     # Resolve transcript
     entries = (body.transcript if body and body.transcript else None) or _DEFAULT_TRANSCRIPT
 
-    # Save transcript into the Meeting row
-    result2 = await session.execute(select(Meeting).where(Meeting.id == meeting_id))
-    meeting_row = result2.scalar_one()
-    meeting_row.transcript_json = entries
+    # Upsert into TranscriptStore
+    result2 = await session.execute(
+        select(TranscriptStore).where(TranscriptStore.meeting_id == meeting_id)
+    )
+    ts_row = result2.scalar_one_or_none()
+    if ts_row:
+        ts_row.entries_json = entries
+    else:
+        session.add(TranscriptStore(meeting_id=meeting_id, entries_json=entries))
     await session.commit()
 
     return {"meeting_id": meeting_id, "transcript_entries_written": len(entries)}

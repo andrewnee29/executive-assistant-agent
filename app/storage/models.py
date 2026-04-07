@@ -18,7 +18,6 @@ class Meeting(Base):
     duration_seconds = Column(Integer)
     processed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    transcript_json = Column(JSON, nullable=True)
 
     recap = relationship("Recap", back_populates="meeting", uselist=False)
     action_items = relationship("ActionItem", back_populates="meeting")
@@ -67,6 +66,13 @@ class Term(Base):
     term = Column(String, nullable=False)
     definition = Column(String)
     category = Column(String)
+
+
+class TranscriptStore(Base):
+    __tablename__ = "transcript_store"
+
+    meeting_id = Column(String, primary_key=True)
+    entries_json = Column(JSON, nullable=False)
 
 
 class UserCredentials(Base):
