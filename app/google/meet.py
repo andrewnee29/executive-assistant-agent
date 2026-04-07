@@ -70,6 +70,7 @@ def fetch_transcript(credentials, conference_id: str) -> list[TranscriptEntry]:
     testing without real Google Meet credentials. Falls back to the Meet API.
     """
     local_path = _LOCAL_TRANSCRIPTS / f"{conference_id}.json"
+    print(f"Looking for transcript at: {local_path} (exists: {local_path.exists()})")
     if local_path.exists():
         raw = json.loads(local_path.read_text(encoding="utf-8"))
         return [
