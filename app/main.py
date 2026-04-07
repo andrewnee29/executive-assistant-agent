@@ -103,6 +103,11 @@ async def index():
     return FileResponse(Path(__file__).parent / "static" / "index.html")
 
 
+@app.get("/history", include_in_schema=False)
+async def history():
+    return FileResponse(Path(__file__).parent / "static" / "history.html")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

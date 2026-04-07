@@ -18,10 +18,43 @@
       align-items: center;
     }
 
+    nav {
+      width: 100%;
+      background: #0f1117;
+      border-bottom: 1px solid #1e2433;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 4px;
+      list-style: none;
+      padding: 0 20px;
+      max-width: 720px;
+      width: 100%;
+    }
+
+    nav a {
+      display: block;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s;
+    }
+
+    nav a:hover { color: #e2e8f0; }
+    nav a.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
+
     #container {
       width: 100%;
       max-width: 720px;
-      height: 100%;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
     }
@@ -150,6 +183,12 @@
   </style>
 </head>
 <body>
+<nav>
+  <ul>
+    <li><a href="/" class="active">Chat</a></li>
+    <li><a href="/history">History</a></li>
+  </ul>
+</nav>
 <div id="container">
   <header>Executive Assistant</header>
   <div id="messages"></div>

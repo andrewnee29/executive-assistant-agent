@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting History — Executive Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    nav {
+      width: 100%;
+      background: #0f1117;
+      border-bottom: 1px solid #1e2433;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 4px;
+      list-style: none;
+      padding: 0 20px;
+      max-width: 720px;
+      width: 100%;
+    }
+
+    nav a {
+      display: block;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s;
+    }
+
+    nav a:hover { color: #e2e8f0; }
+    nav a.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
+
+    #container {
+      width: 100%;
+      max-width: 720px;
+      padding: 28px 20px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: #1e2433;
+      border-radius: 12px;
+      border: 1px solid #2d3748;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: default;
+    }
+
+    .card.processed .card-header { cursor: pointer; }
+
+    .card-header:hover .card-title { color: #fff; }
+    .card.processed .card-header:hover { background: #242d40; }
+
+    .card-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.15s;
+    }
+
+    .card-meta {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 3px;
+    }
+
+    .badge {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge.processed { background: #14532d; color: #4ade80; }
+    .badge.pending   { background: #422006; color: #fbbf24; }
+
+    .chevron {
+      flex-shrink: 0;
+      color: #475569;
+      font-size: 13px;
+      transition: transform 0.2s;
+      margin-left: auto;
+    }
+
+    .card.open .chevron { transform: rotate(180deg); }
+
+    .card-body {
+      display: none;
+      padding: 0 18px 18px;
+      border-top: 1px solid #2d3748;
+    }
+
+    .card.open .card-body { display: block; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #475569;
+      margin: 14px 0 8px;
+    }
+
+    .summary-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+    }
+
+    .action-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .action-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .action-list input[type="checkbox"] {
+      margin-top: 3px;
+      accent-color: #3b82f6;
+      flex-shrink: 0;
+    }
+
+    .action-list li.done { color: #475569; text-decoration: line-through; }
+
+    #status {
+      font-size: 14px;
+      color: #475569;
+      text-align: center;
+      padding: 40px 0;
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <ul>
+    <li><a href="/">Chat</a></li>
+    <li><a href="/history" class="active">History</a></li>
+  </ul>
+</nav>
+<div id="container">
+  <h1>Meeting History</h1>
+  <div id="status">Loading…</div>
+</div>
+
+<script>
+  const container = document.getElementById("container");
+  const statusEl  = document.getElementById("status");
+
+  function fmtDate(iso) {
+    if (!iso) return "Unknown date";
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  async function loadRecap(meetingId, bodyEl) {
+    const [recapRes, itemsRes] = await Promise.all([
+      fetch(`/meetings/${encodeURIComponent(meetingId)}/recap`),
+      fetch(`/meetings/${encodeURIComponent(meetingId)}/action-items`),
+    ]);
+
+    bodyEl.innerHTML = "";
+
+    if (recapRes.ok) {
+      const recap = await recapRes.json();
+      const label = document.createElement("div");
+      label.className = "section-label";
+      label.textContent = "Summary";
+      const text = document.createElement("div");
+      text.className = "summary-text";
+      text.textContent = recap.summary;
+      bodyEl.appendChild(label);
+      bodyEl.appendChild(text);
+    }
+
+    if (itemsRes.ok) {
+      const items = await itemsRes.json();
+      if (items.length > 0) {
+        const label = document.createElement("div");
+        label.className = "section-label";
+        label.textContent = "Action Items";
+        const ul = document.createElement("ul");
+        ul.className = "action-list";
+        items.forEach(item => {
+          const li = document.createElement("li");
+          if (item.done) li.classList.add("done");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = item.done;
+          cb.disabled = true;
+          const span = document.createElement("span");
+          span.textContent = item.task;
+          li.appendChild(cb);
+          li.appendChild(span);
+          ul.appendChild(li);
+        });
+        bodyEl.appendChild(label);
+        bodyEl.appendChild(ul);
+      }
+    }
+
+    if (!bodyEl.hasChildNodes()) {
+      bodyEl.innerHTML = '<p style="color:#475569;font-size:14px;padding-top:14px">No recap data available.</p>';
+    }
+  }
+
+  function buildCard(meeting) {
+    const card = document.createElement("div");
+    card.className = "card" + (meeting.processed ? " processed" : "");
+
+    const header = document.createElement("div");
+    header.className = "card-header";
+
+    const main = document.createElement("div");
+    main.className = "card-main";
+
+    const title = document.createElement("div");
+    title.className = "card-title";
+    title.textContent = meeting.title || meeting.id;
+
+    const meta = document.createElement("div");
+    meta.className = "card-meta";
+    const parts = [fmtDate(meeting.date)];
+    if (meeting.participants && meeting.participants.length)
+      parts.push(meeting.participants.join(", "));
+    meta.textContent = parts.join(" · ");
+
+    main.appendChild(title);
+    main.appendChild(meta);
+
+    const badge = document.createElement("span");
+    badge.className = "badge " + (meeting.processed ? "processed" : "pending");
+    badge.textContent = meeting.processed ? "Processed" : "Pending";
+
+    header.appendChild(main);
+    header.appendChild(badge);
+
+    if (meeting.processed) {
+      const chevron = document.createElement("span");
+      chevron.className = "chevron";
+      chevron.textContent = "▾";
+      header.appendChild(chevron);
+
+      const body = document.createElement("div");
+      body.className = "card-body";
+      card.appendChild(header);
+      card.appendChild(body);
+
+      let loaded = false;
+      header.addEventListener("click", () => {
+        const isOpen = card.classList.toggle("open");
+        if (isOpen && !loaded) {
+          loaded = true;
+          body.innerHTML = '<p style="color:#475569;font-size:14px;padding-top:14px">Loading…</p>';
+          loadRecap(meeting.id, body);
+        }
+      });
+    } else {
+      card.appendChild(header);
+    }
+
+    return card;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch("/meetings");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const meetings = await res.json();
+
+      statusEl.remove();
+
+      if (meetings.length === 0) {
+        const empty = document.createElement("div");
+        empty.id = "status";
+        empty.textContent = "No meetings found.";
+        container.appendChild(empty);
+        return;
+      }
+
+      meetings.forEach(m => container.appendChild(buildCard(m)));
+    } catch (err) {
+      statusEl.textContent = `Failed to load meetings: ${err.message}`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
