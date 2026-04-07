@@ -19,6 +19,7 @@ google-api-python-client>=2.150.0
 sqlalchemy>=2.0.0
 aiosqlite>=0.20.0          # SQLite async driver (local dev)
 asyncpg>=0.29.0            # Postgres async driver (production)
+psycopg2-binary>=2.9.0     # Postgres sync driver (Alembic migrations)
 alembic>=1.13.0            # Migrations
 
 # Utilities
