@@ -8,9 +8,11 @@ from app.storage.models import Base
 
 def _async_database_url() -> str:
     url = os.environ.get("DATABASE_URL", "sqlite:///./data/app.db")
-    # Heroku sets postgres://, SQLAlchemy needs postgresql+asyncpg://
+    # Heroku/Railway may set postgres:// or postgresql://, SQLAlchemy needs postgresql+asyncpg://
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     # Local SQLite
     if url.startswith("sqlite:///"):
         url = url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
