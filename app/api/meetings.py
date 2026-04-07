@@ -103,6 +103,16 @@ async def get_action_items(meeting_id: str, session: AsyncSession = Depends(get_
     return result.scalars().all()
 
 
+@router.post("/{meeting_id}/reset")
+async def reset_meeting(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    meeting = await session.get(Meeting, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found.")
+    meeting.processed = False
+    await session.commit()
+    return {"meeting_id": meeting_id, "processed": False}
+
+
 _DEFAULT_TRANSCRIPT = [
     {"timestamp": "00:00:10", "speaker": "Andrew Nee", "text": "Let's kick off the project planning session. I'll own the backend API spec by end of week."},
     {"timestamp": "00:01:05", "speaker": "Sarah Chen", "text": "Sounds good. I'll handle the frontend mockups and have them ready by Thursday."},

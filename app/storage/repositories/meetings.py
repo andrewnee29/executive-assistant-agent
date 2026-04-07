@@ -38,14 +38,21 @@ async def save_recap(
     summary: str,
     uncertainties: list[str],
 ) -> Recap:
-    """Insert an approved Recap row with approved_at set to now."""
-    recap = Recap(
-        meeting_id=meeting_id,
-        summary=summary,
-        uncertainties=uncertainties,
-        approved_at=datetime.utcnow(),
-    )
-    session.add(recap)
+    """Upsert an approved Recap row with approved_at set to now."""
+    result = await session.execute(select(Recap).where(Recap.meeting_id == meeting_id))
+    recap = result.scalar_one_or_none()
+    if recap:
+        recap.summary = summary
+        recap.uncertainties = uncertainties
+        recap.approved_at = datetime.utcnow()
+    else:
+        recap = Recap(
+            meeting_id=meeting_id,
+            summary=summary,
+            uncertainties=uncertainties,
+            approved_at=datetime.utcnow(),
+        )
+        session.add(recap)
     await session.commit()
     return recap
 

@@ -128,6 +128,20 @@
       margin-left: auto;
     }
 
+    .btn-reset {
+      flex-shrink: 0;
+      background: none;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      color: #475569;
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-reset:hover { color: #f87171; border-color: #f87171; }
+
     .card.open .chevron { transform: rotate(180deg); }
 
     .card-body {
@@ -290,6 +304,17 @@
     header.appendChild(badge);
 
     if (meeting.processed) {
+      const resetBtn = document.createElement("button");
+      resetBtn.className = "btn-reset";
+      resetBtn.textContent = "Reset";
+      resetBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm("Reset this meeting to unprocessed?")) return;
+        await fetch(`/meetings/${encodeURIComponent(meeting.id)}/reset`, { method: "POST" });
+        location.reload();
+      });
+      header.appendChild(resetBtn);
+
       const chevron = document.createElement("span");
       chevron.className = "chevron";
       chevron.textContent = "▾";
