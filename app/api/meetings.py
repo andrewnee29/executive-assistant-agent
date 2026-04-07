@@ -1,3 +1,5 @@
+import json
+import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -101,3 +103,51 @@ async def get_action_items(meeting_id: str, session: AsyncSession = Depends(get_
         select(ActionItem).where(ActionItem.meeting_id == meeting_id)
     )
     return result.scalars().all()
+
+
+_DEFAULT_TRANSCRIPT = [
+    {"timestamp": "00:00:10", "speaker": "Andrew Nee", "text": "Let's kick off the project planning session. I'll own the backend API spec by end of week."},
+    {"timestamp": "00:01:05", "speaker": "Sarah Chen", "text": "Sounds good. I'll handle the frontend mockups and have them ready by Thursday."},
+    {"timestamp": "00:02:30", "speaker": "Andrew Nee", "text": "Can you also send me the design system tokens? I need those to finalize the API response shapes."},
+    {"timestamp": "00:03:15", "speaker": "Sarah Chen", "text": "Yes, I'll send those over today."},
+    {"timestamp": "00:04:00", "speaker": "Andrew Nee", "text": "Great. I also need to schedule a review with the stakeholders — I'll set that up for next Tuesday."},
+    {"timestamp": "00:05:20", "speaker": "Sarah Chen", "text": "Make sure to include the PM on that invite."},
+    {"timestamp": "00:06:10", "speaker": "Andrew Nee", "text": "Will do. I'll also write up the acceptance criteria for the first milestone before that meeting."},
+    {"timestamp": "00:07:45", "speaker": "Sarah Chen", "text": "Perfect. Should we do a quick check-in on Friday to sync before stakeholders?"},
+    {"timestamp": "00:08:30", "speaker": "Andrew Nee", "text": "Yes, let's do Friday at 2pm. I'll send the calendar invite."},
+    {"timestamp": "00:09:50", "speaker": "Sarah Chen", "text": "Works for me. I think that covers everything for today."},
+]
+
+
+class SeedBody(BaseModel):
+    transcript: list[dict] | None = None
+
+
+@router.post("/seed")
+async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depends(get_session)):
+    meeting_id = "test-meeting-001"
+
+    # Insert meeting row if it doesn't exist
+    result = await session.execute(select(Meeting).where(Meeting.id == meeting_id))
+    if result.scalar_one_or_none() is None:
+        session.add(Meeting(
+            id=meeting_id,
+            title="Andrew - Project Planning",
+            date=datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0),
+            participants=["Andrew Nee", "Sarah Chen"],
+            duration_seconds=1800,
+            processed=False,
+        ))
+        await session.commit()
+
+    # Resolve transcript
+    entries = (body.transcript if body and body.transcript else None) or _DEFAULT_TRANSCRIPT
+
+    # Write transcript file
+    transcript_dir = "data/transcripts"
+    os.makedirs(transcript_dir, exist_ok=True)
+    transcript_path = os.path.join(transcript_dir, f"{meeting_id}.json")
+    with open(transcript_path, "w") as f:
+        json.dump(entries, f, indent=2)
+
+    return {"meeting_id": meeting_id, "transcript_entries_written": len(entries)}
