@@ -53,7 +53,7 @@ async def handle_message(
             return f"No meeting at position {index + 1}. You have {len(meetings)} unprocessed meeting(s)."
 
         meeting = meetings[index]
-        transcript = fetch_transcript(credentials, meeting.id)
+        transcript = fetch_transcript(credentials, meeting.id, transcript_json=meeting.transcript_json)
         if not transcript:
             return f"No transcript available yet for '{meeting.title or meeting.id}'. Try again in a few minutes."
 

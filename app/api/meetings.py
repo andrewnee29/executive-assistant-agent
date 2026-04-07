@@ -1,5 +1,3 @@
-import json
-import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -143,11 +141,10 @@ async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depen
     # Resolve transcript
     entries = (body.transcript if body and body.transcript else None) or _DEFAULT_TRANSCRIPT
 
-    # Write transcript file
-    transcript_dir = "data/transcripts"
-    os.makedirs(transcript_dir, exist_ok=True)
-    transcript_path = os.path.join(transcript_dir, f"{meeting_id}.json")
-    with open(transcript_path, "w") as f:
-        json.dump(entries, f, indent=2)
+    # Save transcript into the Meeting row
+    result2 = await session.execute(select(Meeting).where(Meeting.id == meeting_id))
+    meeting_row = result2.scalar_one()
+    meeting_row.transcript_json = entries
+    await session.commit()
 
     return {"meeting_id": meeting_id, "transcript_entries_written": len(entries)}

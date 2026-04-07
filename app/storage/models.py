@@ -18,6 +18,7 @@ class Meeting(Base):
     duration_seconds = Column(Integer)
     processed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    transcript_json = Column(JSON, nullable=True)
 
     recap = relationship("Recap", back_populates="meeting", uselist=False)
     action_items = relationship("ActionItem", back_populates="meeting")
