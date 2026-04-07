@@ -133,7 +133,7 @@ async def seed_test_meeting(body: SeedBody = None, session: AsyncSession = Depen
         session.add(Meeting(
             id=meeting_id,
             title="Andrew - Project Planning",
-            date=datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0),
+            date=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
             participants=["Andrew Nee", "Sarah Chen"],
             duration_seconds=1800,
             processed=False,
