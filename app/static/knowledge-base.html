@@ -88,16 +88,41 @@
   <!-- Main Content -->
   <main class="max-w-5xl mx-auto px-6 py-5">
 
-    <!-- Search -->
-    <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3.5 mb-5">
-      <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-      </svg>
-      <input
-        type="text"
-        x-model="search"
-        :placeholder="activeTab === 'people' ? 'Search people...' : 'Search terms...'"
-        class="bg-transparent border-none py-2.5 px-3 text-sm w-full outline-none text-gray-800 placeholder-gray-400" />
+    <!-- Search + Filters -->
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3.5">
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+        </svg>
+        <input
+          type="text"
+          x-model="search"
+          :placeholder="activeTab === 'people' ? 'Search people...' : 'Search terms...'"
+          class="bg-transparent border-none py-2.5 px-3 text-sm w-full outline-none text-gray-800 placeholder-gray-400" />
+      </div>
+      <!-- Team / Category filter pills -->
+      <template x-if="activeTab === 'people'">
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button @click="teamFilter = null" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            :class="!teamFilter ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">All</button>
+          <template x-for="t in uniqueTeams" :key="t">
+            <button @click="teamFilter = t" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+              :class="teamFilter === t ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+              x-text="t"></button>
+          </template>
+        </div>
+      </template>
+      <template x-if="activeTab === 'terms'">
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button @click="categoryFilter = null" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            :class="!categoryFilter ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">All</button>
+          <template x-for="cat in uniqueCategories" :key="cat">
+            <button @click="categoryFilter = cat" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+              :class="categoryFilter === cat ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+              x-text="cat"></button>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- Loading State -->
@@ -124,40 +149,58 @@
       <!-- People Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <template x-for="person in filteredPeople" :key="person.id">
-          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
-                <!-- Initials Avatar -->
-                <div
-                  class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
-                  :class="avatarColor(person.name)[0] + ' ' + avatarColor(person.name)[1]"
-                  x-text="initials(person.name)">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+               :class="expandedPersonId === person.id ? 'md:col-span-2' : ''">
+            <!-- Card Header (clickable) -->
+            <div class="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                 @click="expandedPersonId = expandedPersonId === person.id ? null : person.id">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                    :class="avatarColor(person.name)[0] + ' ' + avatarColor(person.name)[1]"
+                    x-text="initials(person.name)">
+                  </div>
+                  <div>
+                    <div class="font-semibold text-gray-900 text-sm" x-text="person.name"></div>
+                    <div class="text-xs text-gray-400 mt-0.5" x-text="person.role || '—'"></div>
+                  </div>
                 </div>
-                <div>
-                  <div class="font-semibold text-gray-900 text-sm" x-text="person.name"></div>
-                  <div class="text-xs text-gray-400 mt-0.5" x-text="person.role || '—'"></div>
+                <div class="flex items-center gap-2">
+                  <!-- Team badge -->
+                  <span x-show="person.team" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium" x-text="person.team"></span>
+                  <!-- Expand chevron -->
+                  <span class="text-gray-300 text-sm" x-text="expandedPersonId === person.id ? '▾' : '▸'"></span>
                 </div>
               </div>
-              <!-- Edit button -->
-              <button
-                @click="openEditPerson(person)"
-                class="text-gray-300 hover:text-gray-500 transition-colors p-1 -mt-0.5 -mr-0.5"
-                title="Edit">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6.364-6.364a2 2 0 012.828 2.828L11.828 13.828a4 4 0 01-1.414.94l-3 1 1-3a4 4 0 01.94-1.414L9 11z" />
-                </svg>
-              </button>
+
+              <!-- Email + aliases (always visible) -->
+              <div class="mt-2.5 ml-[52px] flex flex-wrap items-center gap-2">
+                <span x-show="person.email" class="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5" x-text="person.email"></span>
+                <span x-show="person.aliases && person.aliases.length > 0" class="text-xs text-gray-400">
+                  Aliases: <span x-text="(person.aliases || []).join(', ')"></span>
+                </span>
+              </div>
             </div>
 
-            <!-- Email pill -->
-            <div class="mt-3 flex flex-wrap gap-1.5" x-show="person.email">
-              <span class="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5" x-text="person.email"></span>
-            </div>
+            <!-- Expanded Notes Section -->
+            <div x-show="expandedPersonId === person.id" x-transition class="border-t border-gray-100">
+              <div class="p-4">
+                <!-- Notes content -->
+                <template x-if="person.notes">
+                  <div class="text-sm text-gray-600 leading-relaxed max-h-80 overflow-y-auto prose-sm"
+                       x-html="renderNotes(person.notes)">
+                  </div>
+                </template>
+                <template x-if="!person.notes">
+                  <div class="text-sm text-gray-400 italic">No notes yet for this person.</div>
+                </template>
 
-            <!-- Aliases -->
-            <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600" x-show="person.aliases && person.aliases.length > 0">
-              <span class="text-gray-400">Aliases: </span>
-              <span x-text="(person.aliases || []).join(', ')"></span>
+                <!-- Actions -->
+                <div class="mt-4 pt-3 border-t border-gray-100 flex gap-2">
+                  <button @click.stop="openEditPerson(person)" class="text-xs bg-gray-50 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">Edit Profile</button>
+                </div>
+              </div>
             </div>
           </div>
         </template>
@@ -362,6 +405,9 @@
       terms: [],
       search: '',
       loading: true,
+      teamFilter: null,
+      categoryFilter: null,
+      expandedPersonId: null,
 
       // Modal state
       modalOpen: false,
@@ -382,22 +428,51 @@
         this.terms = await (await fetch('/terms')).json();
       },
 
+      get uniqueTeams() {
+        return [...new Set(this.people.map(p => p.team).filter(Boolean))].sort();
+      },
+      get uniqueCategories() {
+        return [...new Set(this.terms.map(t => t.category).filter(Boolean))].sort();
+      },
       get filteredPeople() {
+        let result = this.people;
+        if (this.teamFilter) result = result.filter(p => p.team === this.teamFilter);
         const s = this.search.toLowerCase();
-        if (!s) return this.people;
-        return this.people.filter(p =>
+        if (s) result = result.filter(p =>
           p.name.toLowerCase().includes(s) ||
           (p.role || '').toLowerCase().includes(s) ||
-          (p.email || '').toLowerCase().includes(s)
+          (p.email || '').toLowerCase().includes(s) ||
+          (p.notes || '').toLowerCase().includes(s)
         );
+        return result;
       },
       get filteredTerms() {
+        let result = this.terms;
+        if (this.categoryFilter) result = result.filter(t => t.category === this.categoryFilter);
         const s = this.search.toLowerCase();
-        if (!s) return this.terms;
-        return this.terms.filter(t =>
+        if (s) result = result.filter(t =>
           t.term.toLowerCase().includes(s) ||
           (t.definition || '').toLowerCase().includes(s)
         );
+        return result;
+      },
+
+      renderNotes(text) {
+        if (!text) return '';
+        let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Bold
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
+        // Italic
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Backtick code
+        html = html.replace(/`([^`]+)`/g, '<code class="text-xs bg-gray-100 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
+        // Bullet lists
+        html = html.replace(/^[-*] (.+)$/gm, '<li class="ml-4 list-disc text-gray-600">$1</li>');
+        // Paragraphs
+        html = html.replace(/\n\n/g, '</p><p class="mt-2">');
+        html = html.replace(/\n/g, '<br>');
+        html = '<p>' + html + '</p>';
+        return html;
       },
 
       openCreatePerson() {

@@ -56,8 +56,10 @@ class Person(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     role = Column(String)
+    team = Column(String)
     email = Column(String)
     aliases = Column(JSON, default=list)
+    notes = Column(Text)
 
 
 class Term(Base):

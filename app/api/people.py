@@ -13,8 +13,10 @@ class PersonResponse(BaseModel):
     id: int
     name: str
     role: str | None
+    team: str | None
     email: str | None
     aliases: list[str]
+    notes: str | None
 
     class Config:
         from_attributes = True
@@ -23,15 +25,19 @@ class PersonResponse(BaseModel):
 class PersonCreate(BaseModel):
     name: str
     role: str | None = None
+    team: str | None = None
     email: str | None = None
     aliases: list[str] = []
+    notes: str | None = None
 
 
 class PersonUpdate(BaseModel):
     name: str | None = None
     role: str | None = None
+    team: str | None = None
     email: str | None = None
     aliases: list[str] | None = None
+    notes: str | None = None
 
 
 @router.get("", response_model=list[PersonResponse])
@@ -42,7 +48,7 @@ async def list_people(session: AsyncSession = Depends(get_session)):
 
 @router.post("", response_model=PersonResponse, status_code=201)
 async def create_person(body: PersonCreate, session: AsyncSession = Depends(get_session)):
-    person = Person(name=body.name, role=body.role, email=body.email, aliases=body.aliases)
+    person = Person(name=body.name, role=body.role, team=body.team, email=body.email, aliases=body.aliases, notes=body.notes)
     session.add(person)
     await session.commit()
     await session.refresh(person)
@@ -64,6 +70,10 @@ async def update_person(
         person.email = body.email
     if body.aliases is not None:
         person.aliases = body.aliases
+    if body.team is not None:
+        person.team = body.team
+    if body.notes is not None:
+        person.notes = body.notes
     await session.commit()
     await session.refresh(person)
     return person
