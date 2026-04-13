@@ -4,304 +4,744 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Executive Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: #0f1117;
-      color: #e2e8f0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 15px;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    nav {
-      width: 100%;
-      background: #0f1117;
-      border-bottom: 1px solid #1e2433;
-      display: flex;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    nav ul {
-      display: flex;
-      gap: 4px;
-      list-style: none;
-      padding: 0 20px;
-      max-width: 720px;
-      width: 100%;
-    }
-
-    nav a {
-      display: block;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #64748b;
-      text-decoration: none;
-      border-bottom: 2px solid transparent;
-      transition: color 0.15s;
-    }
-
-    nav a:hover { color: #e2e8f0; }
-    nav a.active { color: #e2e8f0; border-bottom-color: #3b82f6; }
-
-    #container {
-      width: 100%;
-      max-width: 720px;
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      padding: 18px 20px 14px;
-      font-weight: 600;
-      font-size: 16px;
-      color: #94a3b8;
-      border-bottom: 1px solid #1e2433;
-      flex-shrink: 0;
-    }
-
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 88%;
-    }
-
-    .msg.user { align-self: flex-end; align-items: flex-end; }
-    .msg.assistant { align-self: flex-start; }
-
-    .bubble {
-      padding: 10px 14px;
-      border-radius: 14px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .msg.user .bubble {
-      background: #2563eb;
-      color: #fff;
-      border-bottom-right-radius: 4px;
-    }
-
-    .msg.assistant .bubble {
-      background: #1e2433;
-      color: #e2e8f0;
-      border-bottom-left-radius: 4px;
-    }
-
-    .label {
-      font-size: 11px;
-      color: #475569;
-      padding: 0 4px;
-    }
-
-    .typing {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 10px 14px;
-      background: #1e2433;
-      border-radius: 14px;
-      border-bottom-left-radius: 4px;
-      width: fit-content;
-    }
-
-    .dot {
-      width: 7px; height: 7px;
-      background: #64748b;
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-    .dot:nth-child(2) { animation-delay: 0.2s; }
-    .dot:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); }
-      40% { transform: translateY(-6px); }
-    }
-
-    #input-row {
-      padding: 14px 20px 20px;
-      display: flex;
-      gap: 10px;
-      border-top: 1px solid #1e2433;
-      flex-shrink: 0;
-    }
-
-    #input {
-      flex: 1;
-      background: #1e2433;
-      border: 1px solid #2d3748;
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: #e2e8f0;
-      font-size: 15px;
-      outline: none;
-      resize: none;
-      max-height: 120px;
-      line-height: 1.4;
-    }
-
-    #input:focus { border-color: #3b82f6; }
-    #input::placeholder { color: #475569; }
-
-    #send {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 18px;
-      font-size: 15px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.15s;
-      align-self: flex-end;
-    }
-
-    #send:hover { background: #1d4ed8; }
-    #send:disabled { background: #1e2d50; cursor: default; color: #64748b; }
-
-    .bubble b { color: #93c5fd; font-weight: 600; }
+    [x-cloak] { display: none !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes pulse-bar { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .pulse-bar { animation: pulse-bar 2s ease-in-out infinite; }
   </style>
 </head>
-<body>
-<nav>
-  <ul>
-    <li><a href="/" class="active">Chat</a></li>
-    <li><a href="/history">History</a></li>
-  </ul>
-</nav>
-<div id="container">
-  <header>Executive Assistant</header>
-  <div id="messages"></div>
-  <div id="input-row">
-    <textarea id="input" rows="1" placeholder="Ask about your meetings…"></textarea>
-    <button id="send">Send</button>
+<body class="bg-gray-50 min-h-screen" x-data="app" x-cloak>
+
+  <!-- Top Nav -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div class="flex items-center justify-between px-6 py-3">
+      <!-- Left: Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">EA</div>
+        <span class="font-semibold text-gray-900 text-base">Executive Assistant</span>
+      </div>
+      <!-- Center: Navigation -->
+      <div class="flex gap-1">
+        <a href="/" class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600">Today</a>
+        <a href="/history" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">History</a>
+        <a href="/knowledge-base" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">Knowledge Base</a>
+      </div>
+      <!-- Right: Chat + Avatar -->
+      <div class="flex items-center gap-3">
+        <button @click="openChat()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm hover:bg-gray-200 transition-colors" title="AI Assistant">&#x1F4AC;</button>
+        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-600">AS</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Stats Bar -->
+  <div class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="flex items-center justify-between max-w-6xl mx-auto">
+      <div>
+        <div class="text-xs text-gray-400 uppercase tracking-wider" x-text="todayStr"></div>
+        <div class="text-lg font-semibold text-gray-900 mt-0.5">Good morning, Andrew</div>
+      </div>
+      <div class="flex items-center gap-6">
+        <div class="flex gap-6">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-indigo-600" x-text="meetings.length">0</div>
+            <div class="text-xs text-gray-400 uppercase">Meetings</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-amber-500" x-text="pendingCount">0</div>
+            <div class="text-xs text-gray-400 uppercase">Pending</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-emerald-500" x-text="totalActionItems">0</div>
+            <div class="text-xs text-gray-400 uppercase">Action Items</div>
+          </div>
+        </div>
+        <button
+          @click="recapAllPending()"
+          x-show="pendingCount > 0"
+          class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+          Recap All Pending
+        </button>
+      </div>
+    </div>
   </div>
-</div>
+
+  <!-- Loading State -->
+  <div x-show="loading" class="flex items-center justify-center py-20">
+    <div class="flex items-center gap-3 text-gray-400">
+      <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+      <span class="text-sm">Loading meetings...</span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main x-show="!loading" class="max-w-4xl mx-auto px-6 py-5 space-y-3">
+
+    <!-- Empty State -->
+    <div x-show="meetings.length === 0" class="text-center py-20 text-gray-400">
+      <div class="text-4xl mb-3">&#x1F4C5;</div>
+      <div class="text-sm">No meetings found for today.</div>
+    </div>
+
+    <!-- Meeting Cards -->
+    <template x-for="meeting in meetings" :key="meeting.id">
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+
+        <!-- Card Header (always visible) -->
+        <div
+          @click="toggleExpand(meeting.id)"
+          class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50/50 transition-colors">
+          <div class="flex items-center gap-3">
+            <!-- Status Rail -->
+            <div class="w-1 h-9 rounded-full flex-shrink-0" :class="railColor(meeting)"></div>
+            <div>
+              <div class="font-semibold text-[15px] text-gray-900" x-text="meeting.title"></div>
+              <div class="text-xs text-gray-400 mt-0.5">
+                <span x-text="formatTime(meeting.date)"></span>
+                <span x-show="meeting.duration_seconds"> &middot; <span x-text="formatDuration(meeting.duration_seconds)"></span></span>
+                <template x-if="meeting.participants && meeting.participants.length > 0">
+                  <span>
+                    &middot;
+                    <template x-for="(p, pi) in meeting.participants.slice(0, 3)" :key="pi">
+                      <span class="text-gray-500"><span x-text="p"></span><span x-show="pi < Math.min(meeting.participants.length, 3) - 1">, </span></span>
+                    </template>
+                    <span x-show="meeting.participants.length > 3" class="text-gray-400" x-text="'+ ' + (meeting.participants.length - 3) + ' more'"></span>
+                  </span>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <!-- Status Badge -->
+            <span class="text-[11px] px-2.5 py-1 rounded-full font-medium" :class="statusBadgeClasses(meeting)" x-text="statusLabel(meeting)"></span>
+            <!-- Generate Recap Button -->
+            <button
+              x-show="!meeting.processed && !progressStates[meeting.id] && !pendingApproval[meeting.id]"
+              @click.stop="generateRecap(meeting.id)"
+              class="text-xs bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+              Generate Recap
+            </button>
+            <!-- Chevron -->
+            <span class="text-gray-400 text-lg" x-text="expandedId === meeting.id ? '\u25BE' : '\u25B8'"></span>
+          </div>
+        </div>
+
+        <!-- Progress Indicator (shown when processing) -->
+        <template x-if="progressStates[meeting.id]">
+          <div class="border-t border-gray-100 px-5 py-4">
+            <div class="flex items-center gap-4">
+              <div class="flex-1">
+                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500 pulse-bar"
+                    :style="'width: ' + ((progressStates[meeting.id].step / progressStates[meeting.id].total_steps) * 100) + '%'">
+                  </div>
+                </div>
+              </div>
+              <span class="text-xs text-gray-400 whitespace-nowrap" x-text="'Step ' + progressStates[meeting.id].step + ' of ' + progressStates[meeting.id].total_steps"></span>
+            </div>
+            <div class="mt-2 text-sm text-gray-500" x-text="progressStates[meeting.id].label"></div>
+            <!-- Chunk pills -->
+            <template x-if="progressStates[meeting.id].chunks">
+              <div class="flex gap-1.5 mt-3">
+                <template x-for="(chunk, ci) in progressStates[meeting.id].chunks" :key="ci">
+                  <span
+                    class="text-[11px] px-2.5 py-1 rounded"
+                    :class="chunk.status === 'done' ? 'bg-emerald-50 text-emerald-600' : chunk.status === 'active' ? 'bg-indigo-50 text-indigo-600 font-medium' : 'bg-gray-100 text-gray-400'"
+                    x-text="'Chunk ' + (ci + 1) + (chunk.status === 'done' ? ' \u2713' : chunk.status === 'active' ? ' \u27F3' : '')">
+                  </span>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- Approval Banner -->
+        <template x-if="pendingApproval[meeting.id]">
+          <div class="border-t border-gray-100">
+            <!-- Show preview of recap -->
+            <div class="px-5 py-4">
+              <div class="text-sm text-gray-700 leading-relaxed line-clamp-4" x-text="pendingApproval[meeting.id]"></div>
+            </div>
+            <div class="mx-5 mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+              <div class="text-sm text-amber-800">Review this recap and approve to save</div>
+              <div class="flex gap-2">
+                <button @click="generateRecap(meeting.id)" class="text-xs bg-white text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Regenerate</button>
+                <button @click="approveRecap(meeting.id)" class="text-xs bg-emerald-500 text-white px-5 py-2 rounded-lg hover:bg-emerald-600 transition-colors font-medium">Approve &amp; Save</button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Expanded Content -->
+        <div x-show="expandedId === meeting.id && (meeting.processed || recaps[meeting.id])" x-transition class="border-t border-gray-100">
+
+          <!-- Tab Bar -->
+          <div class="px-5 flex gap-0 border-b border-gray-100">
+            <button
+              @click="switchTab(meeting.id, 'summary')"
+              class="px-4 py-3 text-sm transition-colors"
+              :class="(activeTab[meeting.id] || 'summary') === 'summary' ? 'text-indigo-600 font-medium border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'">
+              Summary
+            </button>
+            <button
+              @click="switchTab(meeting.id, 'items')"
+              class="px-4 py-3 text-sm transition-colors flex items-center gap-1.5"
+              :class="activeTab[meeting.id] === 'items' ? 'text-indigo-600 font-medium border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'">
+              Action Items
+              <span
+                x-show="actionItems[meeting.id]?.length"
+                class="text-[11px] px-1.5 py-0.5 rounded-full"
+                :class="activeTab[meeting.id] === 'items' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'"
+                x-text="actionItems[meeting.id]?.length || 0">
+              </span>
+            </button>
+            <button
+              @click="switchTab(meeting.id, 'transcript')"
+              class="px-4 py-3 text-sm transition-colors"
+              :class="activeTab[meeting.id] === 'transcript' ? 'text-indigo-600 font-medium border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'">
+              Transcript
+            </button>
+          </div>
+
+          <!-- SUMMARY TAB -->
+          <div x-show="(activeTab[meeting.id] || 'summary') === 'summary'" class="px-5 py-4">
+            <template x-if="recaps[meeting.id]">
+              <div>
+                <div class="text-sm text-gray-700 leading-relaxed" x-html="recaps[meeting.id].summary?.replace(/\n/g, '<br>')"></div>
+                <!-- Uncertainties -->
+                <template x-if="recaps[meeting.id].uncertainties?.length > 0">
+                  <div class="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                    <div class="text-xs font-medium text-amber-700 mb-2">Uncertainties</div>
+                    <ul class="space-y-1">
+                      <template x-for="u in recaps[meeting.id].uncertainties" :key="u">
+                        <li class="text-sm text-amber-700 flex items-start gap-2">
+                          <span class="text-amber-400 mt-0.5">&#x2022;</span>
+                          <span x-text="u"></span>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+                <div class="mt-4 flex justify-end">
+                  <button @click="openChat(meeting.id)" class="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-3.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                    &#x1F4AC; Ask AI about this meeting
+                  </button>
+                </div>
+              </div>
+            </template>
+            <div x-show="!recaps[meeting.id]" class="text-sm text-gray-400 py-4 text-center">Loading summary...</div>
+          </div>
+
+          <!-- ACTION ITEMS TAB -->
+          <div x-show="activeTab[meeting.id] === 'items'" class="px-5 py-4">
+            <template x-if="actionItems[meeting.id]">
+              <div>
+                <div class="space-y-2">
+                  <template x-for="item in actionItems[meeting.id]" :key="item.id">
+                    <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50/80 border border-gray-100" :class="item.done ? 'opacity-60' : ''">
+                      <input
+                        type="checkbox"
+                        :checked="item.done"
+                        @change="toggleActionItem(meeting.id, item.id, item.done)"
+                        class="w-4 h-4 mt-0.5 accent-indigo-600 cursor-pointer rounded">
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium" :class="item.done ? 'text-gray-400 line-through' : 'text-gray-900'" x-text="item.task"></div>
+                        <div x-show="item.context" class="text-xs text-gray-400 mt-1">
+                          From: <span class="text-gray-500 italic" x-text="'\"' + item.context + '\"'"></span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                          <span x-show="item.timestamp" class="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-mono">&#x1F4CE; <span x-text="item.timestamp"></span></span>
+                          <span x-show="item.timestamp" class="text-[10px] text-gray-300">&middot;</span>
+                          <span x-show="!item.tasks_id" class="text-[10px] text-amber-500">&#x23F3; Not synced</span>
+                          <span x-show="item.tasks_id" class="text-[10px] text-emerald-500">&#x2713; Synced</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <!-- Footer -->
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                  <div class="text-xs text-gray-400">
+                    <span class="text-emerald-500" x-text="actionItems[meeting.id].filter(i => i.done).length"></span> completed &middot;
+                    <span class="text-indigo-600" x-text="actionItems[meeting.id].filter(i => !i.done).length"></span> open
+                  </div>
+                  <button
+                    x-show="actionItems[meeting.id].some(i => !i.tasks_id)"
+                    class="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-3.5 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors font-medium">
+                    Sync All to Google Tasks
+                  </button>
+                </div>
+              </div>
+            </template>
+            <div x-show="!actionItems[meeting.id]" class="text-sm text-gray-400 py-4 text-center">Loading action items...</div>
+          </div>
+
+          <!-- TRANSCRIPT TAB -->
+          <div x-show="activeTab[meeting.id] === 'transcript'" class="px-5 py-4">
+            <template x-if="transcripts[meeting.id]">
+              <div>
+                <!-- Search + Speaker Pills -->
+                <div class="flex gap-2 mb-4">
+                  <div class="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3">
+                    <span class="text-gray-400 text-sm">&#x1F50D;</span>
+                    <input
+                      type="text"
+                      placeholder="Search transcript..."
+                      class="border-none bg-transparent px-2 py-2 text-sm w-full outline-none text-gray-900 placeholder-gray-400"
+                      :value="transcriptSearch[meeting.id] || ''"
+                      @input="transcriptSearch[meeting.id] = $event.target.value">
+                  </div>
+                  <div class="flex gap-1 flex-shrink-0">
+                    <button
+                      @click="transcriptSpeaker[meeting.id] = null"
+                      class="text-[11px] px-3 py-1.5 rounded-md font-medium transition-colors"
+                      :class="!transcriptSpeaker[meeting.id] ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'">
+                      All
+                    </button>
+                    <template x-for="speaker in getUniqueSpeakers(meeting.id)" :key="speaker">
+                      <button
+                        @click="transcriptSpeaker[meeting.id] = transcriptSpeaker[meeting.id] === speaker ? null : speaker"
+                        class="text-[11px] px-3 py-1.5 rounded-md transition-colors"
+                        :class="transcriptSpeaker[meeting.id] === speaker ? 'bg-indigo-100 text-indigo-600 font-medium' : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'"
+                        x-text="speaker.split(' ')[0]">
+                      </button>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Transcript Entries -->
+                <div class="max-h-96 overflow-y-auto space-y-0">
+                  <template x-for="entry in getFilteredTranscript(meeting.id)" :key="entry.timestamp + entry.speaker">
+                    <div
+                      class="flex gap-3 py-2.5 border-b border-gray-50"
+                      :class="isActionItemSource(meeting.id, entry.timestamp) ? 'bg-yellow-50 border-l-4 border-l-amber-400 pl-2 rounded my-1' : ''">
+                      <div class="w-16 text-right flex-shrink-0">
+                        <span class="text-[11px] text-gray-400 font-mono" x-text="entry.timestamp"></span>
+                      </div>
+                      <div class="flex-1">
+                        <span class="text-xs font-semibold cursor-pointer underline decoration-dotted" :class="speakerColor(entry.speaker)" x-text="entry.speaker"></span>
+                        <span class="text-[13px] text-gray-700 ml-2" x-text="entry.text"></span>
+                        <div x-show="isActionItemSource(meeting.id, entry.timestamp)" class="mt-1">
+                          <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded">&#x1F4CB; Generated action item</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  <div class="text-xs text-gray-400">
+                    <span x-text="(transcripts[meeting.id]?.entries || []).length"></span> entries &middot;
+                    <span x-text="formatDuration(meeting.duration_seconds)"></span>
+                  </div>
+                  <div class="text-xs text-gray-400">
+                    <span class="text-amber-500">&#x25CF;</span>
+                    <span x-text="(actionItems[meeting.id] || []).length"></span> action item sources highlighted
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div x-show="!transcripts[meeting.id]" class="text-sm text-gray-400 py-4 text-center">Loading transcript...</div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </main>
+
+  <!-- Chat Backdrop -->
+  <div
+    x-show="chatOpen"
+    x-transition:enter="transition-opacity duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition-opacity duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    @click="chatOpen = false"
+    class="fixed inset-0 bg-black/20 z-40">
+  </div>
+
+  <!-- Chat Slide-Out Panel -->
+  <div
+    x-show="chatOpen"
+    x-transition:enter="transition-transform duration-300 ease-out"
+    x-transition:enter-start="translate-x-full"
+    x-transition:enter-end="translate-x-0"
+    x-transition:leave="transition-transform duration-200 ease-in"
+    x-transition:leave-start="translate-x-0"
+    x-transition:leave-end="translate-x-full"
+    class="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-50 flex flex-col">
+
+    <!-- Chat Header -->
+    <div class="px-5 py-3.5 border-b border-gray-200 bg-gray-50/50">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-semibold text-sm text-gray-900">AI Assistant</div>
+          <!-- Scoped indicator -->
+          <div x-show="chatScope" class="text-[11px] text-indigo-600 mt-1 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-indigo-600 rounded-full inline-block"></span>
+            Scoped to: <span x-text="chatScopeTitle"></span>
+          </div>
+          <!-- Global indicator -->
+          <div x-show="!chatScope" class="text-[11px] text-emerald-500 mt-1 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>
+            All meetings &middot; Cross-context
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button x-show="chatScope" @click="chatScope = null; chatScopeTitle = ''" class="text-[11px] bg-gray-100 text-gray-500 px-2.5 py-1 rounded-md hover:bg-gray-200 transition-colors">Switch to Global</button>
+          <button @click="chatOpen = false" class="text-gray-400 hover:text-gray-600 text-lg transition-colors">&#x2715;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4" id="chatMessages">
+      <template x-for="(msg, mi) in chatMessages" :key="mi">
+        <div>
+          <!-- AI Message -->
+          <div x-show="msg.role === 'assistant'" class="flex gap-2.5">
+            <div class="w-7 h-7 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">EA</div>
+            <div class="bg-gray-50 border border-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%]">
+              <div class="text-[13px] text-gray-700 leading-relaxed" x-text="msg.text"></div>
+            </div>
+          </div>
+          <!-- User Message -->
+          <div x-show="msg.role === 'user'" class="flex justify-end">
+            <div class="bg-indigo-600 rounded-xl rounded-tr-sm px-3.5 py-2.5 max-w-[75%]">
+              <div class="text-[13px] text-white leading-relaxed" x-text="msg.text"></div>
+            </div>
+          </div>
+        </div>
+      </template>
+      <!-- Typing indicator -->
+      <div x-show="chatLoading" class="flex gap-2.5">
+        <div class="w-7 h-7 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">EA</div>
+        <div class="bg-gray-50 border border-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5">
+          <div class="flex gap-1">
+            <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+            <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="px-4 py-3 border-t border-gray-200 bg-white">
+      <div class="flex gap-2 items-center">
+        <input
+          type="text"
+          x-model="chatInput"
+          @keydown.enter="sendChat()"
+          :placeholder="chatScope ? 'Ask about this meeting...' : 'Ask anything...'"
+          class="flex-1 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm outline-none bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 transition-colors">
+        <button @click="sendChat()" class="w-9 h-9 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors text-base">&uarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Chat Button -->
+  <button
+    @click="openChat()"
+    x-show="!chatOpen"
+    class="fixed bottom-6 right-6 w-12 h-12 bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center text-white text-xl hover:bg-indigo-700 hover:shadow-xl transition-all z-30">
+    &#x1F4AC;
+  </button>
 
 <script>
-  const messagesEl = document.getElementById("messages");
-  const inputEl    = document.getElementById("input");
-  const sendBtn    = document.getElementById("send");
+document.addEventListener('alpine:init', () => {
+  Alpine.data('app', () => ({
+    meetings: [],
+    loading: true,
+    expandedId: null,
+    activeTab: {},
+    recaps: {},
+    actionItems: {},
+    transcripts: {},
+    progressStates: {},
+    pendingApproval: {},
 
-  function formatMarkdown(text) {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-  }
+    // Chat
+    chatOpen: false,
+    chatScope: null,
+    chatScopeTitle: '',
+    chatMessages: [],
+    chatInput: '',
+    chatLoading: false,
 
-  function addMessage(role, text) {
-    const wrapper = document.createElement("div");
-    wrapper.className = `msg ${role}`;
+    // Transcript filters
+    transcriptSearch: {},
+    transcriptSpeaker: {},
 
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = role === "user" ? "You" : "Assistant";
+    // People/Terms
+    people: [],
+    terms: [],
 
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    bubble.innerHTML = formatMarkdown(text);
+    get pendingCount() {
+      return this.meetings.filter(m => !m.processed && !this.pendingApproval[m.id]).length;
+    },
+    get totalActionItems() {
+      return Object.values(this.actionItems).reduce((sum, items) => sum + items.length, 0);
+    },
+    get todayStr() {
+      return new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    },
 
-    wrapper.appendChild(label);
-    wrapper.appendChild(bubble);
-    messagesEl.appendChild(wrapper);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    return wrapper;
-  }
+    async init() {
+      await Promise.all([this.fetchMeetings(), this.fetchPeople(), this.fetchTerms()]);
+      this.loading = false;
+    },
 
-  function showTyping() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "msg assistant";
-    wrapper.id = "typing";
+    async fetchMeetings() {
+      try {
+        const res = await fetch('/meetings');
+        if (res.ok) {
+          this.meetings = await res.json();
+          this.meetings.sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+      } catch(e) { console.error('Failed to fetch meetings:', e); }
+    },
 
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = "Assistant";
+    async fetchPeople() {
+      try { this.people = await (await fetch('/people')).json(); } catch(e) {}
+    },
+    async fetchTerms() {
+      try { this.terms = await (await fetch('/terms')).json(); } catch(e) {}
+    },
 
-    const typing = document.createElement("div");
-    typing.className = "typing";
-    typing.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
-
-    wrapper.appendChild(label);
-    wrapper.appendChild(typing);
-    messagesEl.appendChild(wrapper);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-
-  function removeTyping() {
-    const el = document.getElementById("typing");
-    if (el) el.remove();
-  }
-
-  async function sendMessage(text) {
-    if (!text.trim()) return;
-    addMessage("user", text);
-    inputEl.value = "";
-    inputEl.style.height = "auto";
-    sendBtn.disabled = true;
-    showTyping();
-
-    try {
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
-      const data = await res.json();
-      removeTyping();
-      if (res.ok) {
-        addMessage("assistant", data.reply ?? data.detail ?? "No response.");
-      } else {
-        addMessage("assistant", `Error: ${data.detail ?? res.statusText}`);
+    async toggleExpand(meetingId) {
+      if (this.expandedId === meetingId) {
+        this.expandedId = null;
+        return;
       }
-    } catch (err) {
-      removeTyping();
-      addMessage("assistant", `Network error: ${err.message}`);
-    } finally {
-      sendBtn.disabled = false;
-      inputEl.focus();
-    }
-  }
+      this.expandedId = meetingId;
+      if (!this.activeTab[meetingId]) this.activeTab[meetingId] = 'summary';
+      const meeting = this.meetings.find(m => m.id === meetingId);
+      if (meeting?.processed && !this.recaps[meetingId]) {
+        await Promise.all([this.fetchRecap(meetingId), this.fetchActionItems(meetingId)]);
+      }
+    },
 
-  // Auto-resize textarea
-  inputEl.addEventListener("input", () => {
-    inputEl.style.height = "auto";
-    inputEl.style.height = `${inputEl.scrollHeight}px`;
-  });
+    async fetchRecap(meetingId) {
+      try {
+        const res = await fetch(`/meetings/${meetingId}/recap`);
+        if (res.ok) this.recaps[meetingId] = await res.json();
+      } catch(e) {}
+    },
 
-  // Send on Enter (Shift+Enter for newline)
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(inputEl.value);
-    }
-  });
+    async fetchActionItems(meetingId) {
+      try {
+        const res = await fetch(`/meetings/${meetingId}/action-items`);
+        if (res.ok) this.actionItems[meetingId] = await res.json();
+      } catch(e) {}
+    },
 
-  sendBtn.addEventListener("click", () => sendMessage(inputEl.value));
+    async fetchTranscript(meetingId) {
+      if (this.transcripts[meetingId]) return;
+      try {
+        const res = await fetch(`/meetings/${meetingId}/transcript`);
+        if (res.ok) this.transcripts[meetingId] = await res.json();
+      } catch(e) {}
+    },
 
-  // Greet on load
-  sendMessage("what's new");
+    async switchTab(meetingId, tab) {
+      this.activeTab[meetingId] = tab;
+      if (tab === 'transcript') await this.fetchTranscript(meetingId);
+      if (tab === 'items' && !this.actionItems[meetingId]) await this.fetchActionItems(meetingId);
+    },
+
+    async toggleActionItem(meetingId, itemId, currentDone) {
+      try {
+        const res = await fetch(`/meetings/${meetingId}/action-items/${itemId}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({done: !currentDone})
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          const items = this.actionItems[meetingId];
+          const idx = items.findIndex(i => i.id === itemId);
+          if (idx >= 0) items[idx] = updated;
+        }
+      } catch(e) { console.error('Failed to toggle action item:', e); }
+    },
+
+    async generateRecap(meetingId) {
+      const meeting = this.meetings.find(m => m.id === meetingId);
+      if (!meeting) return;
+
+      const unprocessed = this.meetings.filter(m => !m.processed);
+      const idx = unprocessed.findIndex(m => m.id === meetingId) + 1;
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: `recap ${idx}`})
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.pendingApproval[meetingId] = data.reply;
+          this.expandedId = meetingId;
+          this.activeTab[meetingId] = 'summary';
+        }
+      } catch(e) { console.error('Failed to generate recap:', e); }
+
+      this.pollProgress(meetingId);
+    },
+
+    async recapAllPending() {
+      const unprocessed = this.meetings.filter(m => !m.processed && !this.pendingApproval[m.id]);
+      for (const meeting of unprocessed) {
+        await this.generateRecap(meeting.id);
+      }
+    },
+
+    async approveRecap(meetingId) {
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: 'approve'})
+        });
+        if (res.ok) {
+          delete this.pendingApproval[meetingId];
+          await this.fetchMeetings();
+          await Promise.all([this.fetchRecap(meetingId), this.fetchActionItems(meetingId)]);
+        }
+      } catch(e) { console.error('Failed to approve recap:', e); }
+    },
+
+    pollProgress(meetingId) {
+      const poll = setInterval(async () => {
+        try {
+          const res = await fetch(`/meetings/${meetingId}/progress`);
+          const data = await res.json();
+          if (data.processing_state) {
+            this.progressStates[meetingId] = data.processing_state;
+          } else {
+            clearInterval(poll);
+            delete this.progressStates[meetingId];
+          }
+        } catch(e) {
+          clearInterval(poll);
+        }
+      }, 2000);
+    },
+
+    // Chat methods
+    openChat(meetingId = null) {
+      this.chatScope = meetingId;
+      this.chatScopeTitle = meetingId ? this.meetings.find(m => m.id === meetingId)?.title || '' : '';
+      this.chatMessages = [];
+      this.chatOpen = true;
+      if (meetingId) {
+        this.chatMessages.push({role: 'assistant', text: `I have the full transcript and recap for "${this.chatScopeTitle}". What would you like to know?`});
+      } else {
+        this.chatMessages.push({role: 'assistant', text: "I can search across all your meetings and recaps. What do you need?"});
+      }
+    },
+
+    async sendChat() {
+      if (!this.chatInput.trim() || this.chatLoading) return;
+      const msg = this.chatInput.trim();
+      this.chatInput = '';
+      this.chatMessages.push({role: 'user', text: msg});
+      this.chatLoading = true;
+
+      // Scroll to bottom
+      this.$nextTick(() => {
+        const el = document.getElementById('chatMessages');
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: msg})
+        });
+        const data = await res.json();
+        this.chatMessages.push({role: 'assistant', text: data.reply || data.detail || 'No response.'});
+      } catch(e) {
+        this.chatMessages.push({role: 'assistant', text: `Error: ${e.message}`});
+      }
+      this.chatLoading = false;
+
+      this.$nextTick(() => {
+        const el = document.getElementById('chatMessages');
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    },
+
+    // Helpers
+    statusColor(meeting) {
+      if (this.progressStates[meeting.id]) return 'indigo';
+      if (this.pendingApproval[meeting.id]) return 'amber';
+      if (meeting.processed) return 'emerald';
+      return 'amber';
+    },
+    statusLabel(meeting) {
+      if (this.progressStates[meeting.id]) return 'Processing';
+      if (this.pendingApproval[meeting.id]) return 'Awaiting Approval';
+      if (meeting.processed) return 'Recapped';
+      return 'Pending';
+    },
+    statusBadgeClasses(meeting) {
+      const color = this.statusColor(meeting);
+      const map = {
+        emerald: 'bg-emerald-50 text-emerald-600',
+        amber: 'bg-amber-50 text-amber-500',
+        indigo: 'bg-indigo-50 text-indigo-600',
+      };
+      return map[color] || 'bg-gray-100 text-gray-400';
+    },
+    railColor(meeting) {
+      const map = {emerald: 'bg-emerald-500', amber: 'bg-amber-500', indigo: 'bg-indigo-600'};
+      return map[this.statusColor(meeting)] || 'bg-gray-300';
+    },
+    formatTime(dateStr) {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'});
+    },
+    formatDuration(seconds) {
+      if (!seconds) return '';
+      return `${Math.round(seconds / 60)} min`;
+    },
+    speakerColor(name) {
+      const colors = ['text-indigo-600', 'text-purple-600', 'text-emerald-600', 'text-amber-600', 'text-sky-600', 'text-pink-600'];
+      let hash = 0;
+      for (const c of name) hash = ((hash << 5) - hash) + c.charCodeAt(0);
+      return colors[Math.abs(hash) % colors.length];
+    },
+    getFilteredTranscript(meetingId) {
+      const t = this.transcripts[meetingId];
+      if (!t) return [];
+      let entries = t.entries || [];
+      const search = (this.transcriptSearch[meetingId] || '').toLowerCase();
+      const speaker = this.transcriptSpeaker[meetingId];
+      if (search) entries = entries.filter(e => e.text.toLowerCase().includes(search) || e.speaker.toLowerCase().includes(search));
+      if (speaker) entries = entries.filter(e => e.speaker === speaker);
+      return entries;
+    },
+    getUniqueSpeakers(meetingId) {
+      const t = this.transcripts[meetingId];
+      if (!t) return [];
+      return [...new Set((t.entries || []).map(e => e.speaker))];
+    },
+    isActionItemSource(meetingId, timestamp) {
+      const items = this.actionItems[meetingId] || [];
+      return items.some(i => i.timestamp === timestamp);
+    },
+  }));
+});
 </script>
 </body>
 </html>
