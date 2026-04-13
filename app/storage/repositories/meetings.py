@@ -15,7 +15,7 @@ async def save_meeting(session: AsyncSession, meeting_dict: dict) -> Meeting:
     meeting = Meeting(
         id=meeting_dict["conference_id"],
         title=meeting_dict.get("title"),
-        date=meeting_dict.get("start_time"),
+        date=meeting_dict.get("start_time").replace(tzinfo=None) if meeting_dict.get("start_time") else None,
         participants=meeting_dict.get("participants", []),
         duration_seconds=meeting_dict.get("duration_seconds"),
     )
