@@ -110,6 +110,11 @@ async def history():
     return FileResponse(Path(__file__).parent / "static" / "history.html")
 
 
+@app.get("/knowledge-base", include_in_schema=False)
+async def knowledge_base():
+    return FileResponse(Path(__file__).parent / "static" / "knowledge-base.html")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
