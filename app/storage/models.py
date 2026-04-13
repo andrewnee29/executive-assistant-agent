@@ -17,6 +17,7 @@ class Meeting(Base):
     participants = Column(JSON, default=list)
     duration_seconds = Column(Integer)
     processed = Column(Boolean, default=False, nullable=False)
+    processing_state = Column(JSON, default=None)  # {step, total_steps, label, chunks: [{status}]}
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     recap = relationship("Recap", back_populates="meeting", uselist=False)
