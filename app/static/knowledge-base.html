@@ -355,6 +355,7 @@
   </div>
 
   <script>
+    document.addEventListener('alpine:init', () => {
     Alpine.data('kb', () => ({
       activeTab: 'people',
       people: [],
@@ -489,6 +490,7 @@
         return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
       },
     }));
+    });
   </script>
 
 </body>
