@@ -212,7 +212,10 @@
           <div x-show="(activeTab[meeting.id] || 'summary') === 'summary'" class="px-5 py-4">
             <template x-if="recaps[meeting.id]">
               <div>
-                <div class="text-sm text-gray-700 leading-relaxed" x-html="recaps[meeting.id].summary?.replace(/\n/g, '<br>')"></div>
+                <div class="text-gray-700 leading-relaxed text-sm"
+                     x-html="linkifyRecap(recaps[meeting.id]?.summary || '')"
+                     @click="handlePopoverClick($event)">
+                </div>
                 <!-- Uncertainties -->
                 <template x-if="recaps[meeting.id].uncertainties?.length > 0">
                   <div class="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
@@ -454,6 +457,65 @@
     class="fixed bottom-6 right-6 w-12 h-12 bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center text-white text-xl hover:bg-indigo-700 hover:shadow-xl transition-all z-30">
     &#x1F4AC;
   </button>
+
+  <!-- Person Popover -->
+  <div x-show="popover.visible && popover.type === 'person'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-100"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       class="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl w-72 overflow-hidden"
+       :style="`left: ${popover.x}px; top: ${popover.y}px`"
+       @click.outside="hidePopover()">
+    <div class="p-3.5 flex items-center gap-3 border-b border-gray-100">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-indigo-100 text-indigo-600">
+        <span x-text="popover.data?.name?.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)"></span>
+      </div>
+      <div>
+        <div class="font-semibold text-sm text-gray-900" x-text="popover.data?.name"></div>
+        <div class="text-xs text-gray-400" x-text="popover.data?.role || 'No role set'"></div>
+      </div>
+    </div>
+    <div class="p-3.5 space-y-1.5 text-xs text-gray-500">
+      <div class="flex items-center gap-2" x-show="popover.data?.email">
+        <span>&#x1F4E7;</span><span x-text="popover.data?.email"></span>
+      </div>
+      <div class="flex items-center gap-2" x-show="popover.data?.aliases?.length">
+        <span>&#x1F3F7;</span><span>Aliases: <span x-text="(popover.data?.aliases || []).join(', ')"></span></span>
+      </div>
+    </div>
+    <div class="px-3.5 pb-3 flex gap-2">
+      <a href="/knowledge-base" class="flex-1 text-center text-xs font-medium text-indigo-600 bg-gray-50 border border-gray-200 rounded-md py-1.5 hover:bg-gray-100">View Profile</a>
+      <button @click="hidePopover()" class="flex-1 text-center text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md py-1.5 hover:bg-gray-100">Close</button>
+    </div>
+  </div>
+
+  <!-- Term Popover -->
+  <div x-show="popover.visible && popover.type === 'term'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-100"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       class="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl w-72 overflow-hidden"
+       :style="`left: ${popover.x}px; top: ${popover.y}px`"
+       @click.outside="hidePopover()">
+    <div class="p-3.5 flex items-center gap-3 border-b border-gray-100">
+      <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-base">&#x1F4D6;</div>
+      <div>
+        <div class="font-semibold text-sm text-gray-900" x-text="popover.data?.term"></div>
+        <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full" x-text="popover.data?.category || 'General'"></span>
+      </div>
+    </div>
+    <div class="p-3.5 text-xs text-gray-600 leading-relaxed" x-text="popover.data?.definition || 'No definition yet.'"></div>
+    <div class="px-3.5 pb-3 flex gap-2">
+      <a href="/knowledge-base" class="flex-1 text-center text-xs font-medium text-indigo-600 bg-gray-50 border border-gray-200 rounded-md py-1.5 hover:bg-gray-100">View in KB</a>
+      <button @click="hidePopover()" class="flex-1 text-center text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md py-1.5 hover:bg-gray-100">Close</button>
+    </div>
+  </div>
 
 <script>
 document.addEventListener('alpine:init', () => {
@@ -739,6 +801,58 @@ document.addEventListener('alpine:init', () => {
     isActionItemSource(meetingId, timestamp) {
       const items = this.actionItems[meetingId] || [];
       return items.some(i => i.timestamp === timestamp);
+    },
+
+    // Popover state
+    popover: { visible: false, type: null, data: null, x: 0, y: 0 },
+
+    showPopover(event, type, data) {
+      const rect = event.target.getBoundingClientRect();
+      this.popover = {
+        visible: true,
+        type,  // 'person' or 'term'
+        data,
+        x: Math.min(rect.left, window.innerWidth - 300),
+        y: rect.bottom + 8 + window.scrollY,
+      };
+    },
+
+    hidePopover() {
+      this.popover = { visible: false, type: null, data: null, x: 0, y: 0 };
+    },
+
+    linkifyRecap(text) {
+      if (!text) return '';
+      let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      // Replace known person names with clickable spans
+      for (const p of this.people) {
+        const escaped = p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp('\\b' + escaped + '\\b', 'g');
+        html = html.replace(re, `<span class="text-indigo-600 underline decoration-dotted underline-offset-2 bg-indigo-50 px-0.5 rounded cursor-pointer hover:bg-indigo-100 transition-colors" data-popover-type="person" data-popover-id="${p.id}">${p.name}</span>`);
+      }
+
+      // Replace known terms
+      for (const t of this.terms) {
+        const escaped = t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp('\\b' + escaped + '\\b', 'gi');
+        html = html.replace(re, `<span class="text-indigo-600 underline decoration-dotted underline-offset-2 bg-indigo-50 px-0.5 rounded cursor-pointer hover:bg-indigo-100 transition-colors" data-popover-type="term" data-popover-id="${t.id}">${t.term}</span>`);
+      }
+
+      // Convert newlines to <br>
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    },
+
+    handlePopoverClick(event) {
+      const el = event.target.closest('[data-popover-type]');
+      if (!el) return;
+      const type = el.dataset.popoverType;
+      const id = parseInt(el.dataset.popoverId);
+      let data;
+      if (type === 'person') data = this.people.find(p => p.id === id);
+      else if (type === 'term') data = this.terms.find(t => t.id === id);
+      if (data) this.showPopover(event, type, data);
     },
   }));
 });
