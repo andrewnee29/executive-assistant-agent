@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from google.oauth2.credentials import Credentials
 from sqlalchemy import select
 
-from app.api import auth, chat, meetings, people
+from app.api import auth, chat, meetings, people, terms
 from app.google.meet import list_meetings, match_calendar_title
 from app.storage.database import init_db, AsyncSessionLocal
 from app.storage.models import UserCredentials
@@ -97,6 +97,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(meetings.router, prefix="/meetings", tags=["meetings"])
 app.include_router(people.router, prefix="/people", tags=["people"])
+app.include_router(terms.router, prefix="/terms", tags=["terms"])
 
 
 @app.get("/", include_in_schema=False)
