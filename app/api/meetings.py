@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from google.oauth2.credentials import Credentials
@@ -111,6 +112,48 @@ async def reset_meeting(meeting_id: str, session: AsyncSession = Depends(get_ses
     meeting.processed = False
     await session.commit()
     return {"meeting_id": meeting_id, "processed": False}
+
+
+class ActionItemToggle(BaseModel):
+    done: bool
+
+
+@router.patch("/{meeting_id}/action-items/{item_id}", response_model=ActionItemResponse)
+async def toggle_action_item(
+    meeting_id: str,
+    item_id: int,
+    body: ActionItemToggle,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(ActionItem).where(ActionItem.id == item_id, ActionItem.meeting_id == meeting_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found.")
+    item.done = body.done
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+class TranscriptResponse(BaseModel):
+    meeting_id: str
+    entries: list[dict]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/{meeting_id}/transcript", response_model=TranscriptResponse)
+async def get_transcript(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(TranscriptStore).where(TranscriptStore.meeting_id == meeting_id)
+    )
+    ts = result.scalar_one_or_none()
+    if not ts:
+        raise HTTPException(status_code=404, detail="No transcript found for this meeting.")
+    return TranscriptResponse(meeting_id=meeting_id, entries=ts.entries_json)
 
 
 _DEFAULT_TRANSCRIPT = [
