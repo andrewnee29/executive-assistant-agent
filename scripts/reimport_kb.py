@@ -99,18 +99,18 @@ def _build_person(name: str, block_lines: list[str], team: str) -> dict:
         aliases.append(parts[0])
         aliases.append(parts[0][0] + parts[-1][0])
 
-    # Extract full notes — everything after the first line, cleaned up
-    # Remove the name/role first line prefix, keep everything else
+    # Extract and structure notes into scannable bullet points
     notes_text = block
-    # Remove the **Name** — Role prefix from the start
+    # Remove the **Name** — Role prefix
     notes_text = re.sub(r'^\*\*[^*]+\*\*\s*[—–\-]\s*', '', notes_text, count=1)
-    # Clean up markdown formatting for readability
     notes_text = notes_text.strip()
-    # Remove > blockquotes prefix
+    # Remove blockquote prefixes
     notes_text = re.sub(r'^>\s*', '', notes_text, flags=re.MULTILINE)
 
     if not notes_text or len(notes_text) < 10:
         notes_text = None
+    else:
+        notes_text = _structure_notes(notes_text, role)
 
     return {
         'name': name,
@@ -120,6 +120,76 @@ def _build_person(name: str, block_lines: list[str], team: str) -> dict:
         'aliases': json.dumps(aliases),
         'notes': notes_text,
     }
+
+
+def _structure_notes(raw: str, role: str | None) -> str:
+    """Transform a prose block into structured, scannable markdown sections."""
+    # Split on sentence boundaries (period + space or period + newline)
+    # Keep original sentences intact
+    sentences = re.split(r'(?<=[.!?])\s+', raw)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    # Categorize sentences into buckets
+    buckets = {
+        'background': [],
+        'projects': [],
+        'tools': [],
+        'sessions': [],
+        'status': [],
+        'other': [],
+    }
+
+    project_kw = r'(?:project|build|built|creating|working on|RFP|agent|skill|app|prototype|repo|pipeline|automation|workflow|initiative|integration)'
+    tool_kw = r'(?:Claude|Cursor|Cowork|Lovable|SuperDesign|Warp|Firebase|MCP|Rube|Composio|SuperWhisper|Obsidian|Slack|GitHub|Google|Salesforce|HubSpot|N8N|Pipedream|OpenBB|Hatch|Snitch|BigQuery|Confluence|Jira|ChatGPT|Gemini)'
+    session_kw = r'(?:session|onboard|covered|walked through|demo|trained|introduced|configured|set up|first.*call|meeting with Caedon)'
+    status_kw = r'(?:next|owes|follow.?up|TODO|scheduled|planning|wants|needs|waiting|pending|paused|blocked)'
+
+    for s in sentences:
+        # Skip very short fragments
+        if len(s) < 15:
+            continue
+        # Remove **bold** markers for classification but keep them in output
+        plain = re.sub(r'\*\*(.+?)\*\*', r'\1', s)
+
+        if re.search(session_kw, plain, re.IGNORECASE):
+            buckets['sessions'].append(s)
+        elif re.search(status_kw, plain, re.IGNORECASE):
+            buckets['status'].append(s)
+        elif re.search(project_kw, plain, re.IGNORECASE):
+            buckets['projects'].append(s)
+        elif re.search(tool_kw, plain, re.IGNORECASE):
+            buckets['tools'].append(s)
+        elif re.search(r'(?:team|reports to|hired|joined|based in|background|degree|years|from )', plain, re.IGNORECASE):
+            buckets['background'].append(s)
+        else:
+            buckets['other'].append(s)
+
+    # Build structured output
+    sections = []
+
+    section_config = [
+        ('background', '📋 Background'),
+        ('projects', '🔧 Projects & Work'),
+        ('tools', '🛠 Tools & Setup'),
+        ('sessions', '📅 Session History'),
+        ('status', '⏳ Next Steps & Status'),
+        ('other', '📝 Notes'),
+    ]
+
+    for key, heading in section_config:
+        items = buckets[key]
+        if not items:
+            continue
+        sections.append(f'**{heading}**')
+        for item in items:
+            # Clean up and bulletize
+            item = item.strip().rstrip('.')
+            # Wrap dates/parentheticals in context
+            sections.append(f'- {item}')
+        sections.append('')  # blank line between sections
+
+    result = '\n'.join(sections).strip()
+    return result if result else None
 
 
 def parse_terms(text: str) -> list[dict]:

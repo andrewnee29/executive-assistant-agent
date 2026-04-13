@@ -459,20 +459,56 @@
 
       renderNotes(text) {
         if (!text) return '';
-        let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        // Bold
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
-        // Italic
-        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        // Backtick code
-        html = html.replace(/`([^`]+)`/g, '<code class="text-xs bg-gray-100 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
-        // Bullet lists
-        html = html.replace(/^[-*] (.+)$/gm, '<li class="ml-4 list-disc text-gray-600">$1</li>');
-        // Paragraphs
-        html = html.replace(/\n\n/g, '</p><p class="mt-2">');
-        html = html.replace(/\n/g, '<br>');
-        html = '<p>' + html + '</p>';
-        return html;
+        // Split into sections by double newline
+        const sections = text.split(/\n\n+/);
+        let html = '';
+
+        for (const section of sections) {
+          const lines = section.split('\n');
+          let sectionHtml = '';
+          let inList = false;
+
+          for (const line of lines) {
+            // Section headings like **📋 Background**
+            const headingMatch = line.match(/^\*\*(.+)\*\*$/);
+            if (headingMatch) {
+              if (inList) { sectionHtml += '</ul>'; inList = false; }
+              const heading = headingMatch[1]
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              sectionHtml += `<div class="text-xs font-semibold text-gray-800 uppercase tracking-wider mt-4 mb-1.5 first:mt-0">${heading}</div>`;
+              continue;
+            }
+
+            // Bullet items
+            const bulletMatch = line.match(/^- (.+)$/);
+            if (bulletMatch) {
+              if (!inList) { sectionHtml += '<ul class="space-y-1 mb-2">'; inList = true; }
+              let item = bulletMatch[1]
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              // Render inline markdown
+              item = item.replace(/\*\*(.+?)\*\*/g, '<strong class="font-medium text-gray-800">$1</strong>');
+              item = item.replace(/`([^`]+)`/g, '<code class="text-xs bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
+              // Highlight dates like (02-24) or (03-05)
+              item = item.replace(/\((\d{2}-\d{2})\)/g, '<span class="text-xs text-indigo-500 font-medium">($1)</span>');
+              item = item.replace(/\((\d{2}-\d{2},\s*\w+)/g, '<span class="text-xs text-indigo-500 font-medium">($1</span>');
+              sectionHtml += `<li class="text-sm text-gray-600 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-indigo-400 before:font-bold">${item}</li>`;
+              continue;
+            }
+
+            // Plain text (rare with structured notes)
+            if (line.trim()) {
+              if (inList) { sectionHtml += '</ul>'; inList = false; }
+              let plain = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              plain = plain.replace(/\*\*(.+?)\*\*/g, '<strong class="font-medium text-gray-800">$1</strong>');
+              plain = plain.replace(/`([^`]+)`/g, '<code class="text-xs bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
+              sectionHtml += `<p class="text-sm text-gray-600 mt-1">${plain}</p>`;
+            }
+          }
+          if (inList) sectionHtml += '</ul>';
+          html += sectionHtml;
+        }
+
+        return html || '<span class="text-gray-400 italic">No notes available.</span>';
       },
 
       openCreatePerson() {
