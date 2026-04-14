@@ -60,13 +60,30 @@ async def handle_message(
         people = await load_people(session)
         terms = await load_terms(session)
 
+        # Build a progress callback that writes to the DB
+        async def _save_progress(state: dict):
+            meeting.processing_state = state
+            await session.commit()
+
+        # Mark as processing
+        meeting.processing_state = {"step": 1, "total_steps": 4, "label": "Fetching transcript..."}
+        await session.commit()
+
+        meeting.processing_state = {"step": 2, "total_steps": 4, "label": "Loading context..."}
+        await session.commit()
+
         result = await process_meeting(
             transcript=transcript,
             meeting_title=meeting.title,
             people=people,
             terms=terms,
             user_name=user_name,
+            on_progress=_save_progress,
         )
+
+        # Clear processing state
+        meeting.processing_state = None
+        await session.commit()
 
         _pending[user_name] = (meeting.id, result)
         return _format_result(result)

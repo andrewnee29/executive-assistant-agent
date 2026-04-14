@@ -17,6 +17,7 @@ class Meeting(Base):
     participants = Column(JSON, default=list)
     duration_seconds = Column(Integer)
     processed = Column(Boolean, default=False, nullable=False)
+    processing_state = Column(JSON, default=None)  # {step, total_steps, label, chunks: [{status}]}
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     recap = relationship("Recap", back_populates="meeting", uselist=False)
@@ -55,8 +56,10 @@ class Person(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     role = Column(String)
+    team = Column(String)
     email = Column(String)
     aliases = Column(JSON, default=list)
+    notes = Column(Text)
 
 
 class Term(Base):

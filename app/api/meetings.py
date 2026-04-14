@@ -113,6 +113,56 @@ async def reset_meeting(meeting_id: str, session: AsyncSession = Depends(get_ses
     return {"meeting_id": meeting_id, "processed": False}
 
 
+class ActionItemToggle(BaseModel):
+    done: bool
+
+
+@router.patch("/{meeting_id}/action-items/{item_id}", response_model=ActionItemResponse)
+async def toggle_action_item(
+    meeting_id: str,
+    item_id: int,
+    body: ActionItemToggle,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(ActionItem).where(ActionItem.id == item_id, ActionItem.meeting_id == meeting_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found.")
+    item.done = body.done
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+class TranscriptResponse(BaseModel):
+    meeting_id: str
+    entries: list[dict]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/{meeting_id}/transcript", response_model=TranscriptResponse)
+async def get_transcript(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(TranscriptStore).where(TranscriptStore.meeting_id == meeting_id)
+    )
+    ts = result.scalar_one_or_none()
+    if not ts:
+        raise HTTPException(status_code=404, detail="No transcript found for this meeting.")
+    return TranscriptResponse(meeting_id=meeting_id, entries=ts.entries_json)
+
+
+@router.get("/{meeting_id}/progress")
+async def get_progress(meeting_id: str, session: AsyncSession = Depends(get_session)):
+    meeting = await session.get(Meeting, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found.")
+    return {"meeting_id": meeting_id, "processing_state": meeting.processing_state}
+
+
 _DEFAULT_TRANSCRIPT = [
     {"timestamp": "00:00:10", "speaker": "Andrew Nee", "text": "Let's kick off the project planning session. I'll own the backend API spec by end of week."},
     {"timestamp": "00:01:05", "speaker": "Sarah Chen", "text": "Sounds good. I'll handle the frontend mockups and have them ready by Thursday."},

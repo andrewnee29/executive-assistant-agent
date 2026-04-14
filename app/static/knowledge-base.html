@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Base — Executive Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="kb" x-cloak>
+
+  <!-- Top Nav -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div class="flex items-center justify-between px-6 py-3">
+      <!-- Left: Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">EA</div>
+        <span class="font-semibold text-gray-900 text-base">Executive Assistant</span>
+      </div>
+      <!-- Center: Navigation -->
+      <div class="flex gap-1">
+        <a href="/" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">Today</a>
+        <a href="/history" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">History</a>
+        <a href="/knowledge-base" class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600">Knowledge Base</a>
+      </div>
+      <!-- Right: Avatar -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-600">CG</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="bg-white border-b border-gray-200 px-6 py-5">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900">Knowledge Base</h1>
+          <p class="text-sm text-gray-400 mt-0.5">People, terms, and context that improve recap accuracy</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="openCreateTerm()"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors">
+            + Add Term
+          </button>
+          <button
+            @click="openCreatePerson()"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+            + Add Person
+          </button>
+        </div>
+      </div>
+
+      <!-- Segmented Tabs -->
+      <div class="flex gap-0 mt-5 border-b border-gray-200 -mb-px">
+        <button
+          @click="activeTab = 'people'; search = ''"
+          :class="activeTab === 'people' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'"
+          class="px-5 py-2.5 text-sm font-medium transition-colors flex items-center gap-2">
+          People
+          <span
+            :class="activeTab === 'people' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'"
+            class="text-xs px-2 py-0.5 rounded-full font-medium"
+            x-text="people.length">
+          </span>
+        </button>
+        <button
+          @click="activeTab = 'terms'; search = ''"
+          :class="activeTab === 'terms' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'"
+          class="px-5 py-2.5 text-sm font-medium transition-colors flex items-center gap-2">
+          Terms
+          <span
+            :class="activeTab === 'terms' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'"
+            class="text-xs px-2 py-0.5 rounded-full font-medium"
+            x-text="terms.length">
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-5xl mx-auto px-6 py-5">
+
+    <!-- Search + Filters -->
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3.5">
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+        </svg>
+        <input
+          type="text"
+          x-model="search"
+          :placeholder="activeTab === 'people' ? 'Search people...' : 'Search terms...'"
+          class="bg-transparent border-none py-2.5 px-3 text-sm w-full outline-none text-gray-800 placeholder-gray-400" />
+      </div>
+      <!-- Team / Category filter pills -->
+      <template x-if="activeTab === 'people'">
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button @click="teamFilter = null" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            :class="!teamFilter ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">All</button>
+          <template x-for="t in uniqueTeams" :key="t">
+            <button @click="teamFilter = t" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+              :class="teamFilter === t ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+              x-text="t"></button>
+          </template>
+        </div>
+      </template>
+      <template x-if="activeTab === 'terms'">
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button @click="categoryFilter = null" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            :class="!categoryFilter ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">All</button>
+          <template x-for="cat in uniqueCategories" :key="cat">
+            <button @click="categoryFilter = cat" class="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+              :class="categoryFilter === cat ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+              x-text="cat"></button>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="flex items-center justify-center py-20">
+      <div class="flex items-center gap-3 text-gray-400">
+        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <span class="text-sm">Loading knowledge base...</span>
+      </div>
+    </div>
+
+    <!-- People Tab -->
+    <div x-show="!loading && activeTab === 'people'">
+
+      <!-- Empty state -->
+      <div x-show="filteredPeople.length === 0" class="text-center py-20 text-gray-400">
+        <div class="text-4xl mb-3">&#x1F465;</div>
+        <div class="text-sm" x-text="search ? 'No people match your search.' : 'No people in the knowledge base yet.'"></div>
+        <button x-show="!search" @click="openCreatePerson()" class="mt-4 text-sm text-indigo-600 hover:underline">Add the first person</button>
+      </div>
+
+      <!-- People Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template x-for="person in filteredPeople" :key="person.id">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+               :class="expandedPersonId === person.id ? 'md:col-span-2' : ''">
+            <!-- Card Header (clickable) -->
+            <div class="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                 @click="expandedPersonId = expandedPersonId === person.id ? null : person.id">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                    :class="avatarColor(person.name)[0] + ' ' + avatarColor(person.name)[1]"
+                    x-text="initials(person.name)">
+                  </div>
+                  <div>
+                    <div class="font-semibold text-gray-900 text-sm" x-text="person.name"></div>
+                    <div class="text-xs text-gray-400 mt-0.5" x-text="person.role || '—'"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <!-- Team badge -->
+                  <span x-show="person.team" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium" x-text="person.team"></span>
+                  <!-- Expand chevron -->
+                  <span class="text-gray-300 text-sm" x-text="expandedPersonId === person.id ? '▾' : '▸'"></span>
+                </div>
+              </div>
+
+              <!-- Email + aliases (always visible) -->
+              <div class="mt-2.5 ml-[52px] flex flex-wrap items-center gap-2">
+                <span x-show="person.email" class="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5" x-text="person.email"></span>
+                <span x-show="person.aliases && person.aliases.length > 0" class="text-xs text-gray-400">
+                  Aliases: <span x-text="(person.aliases || []).join(', ')"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Expanded Notes Section -->
+            <div x-show="expandedPersonId === person.id" x-transition class="border-t border-gray-100">
+              <div class="p-4">
+                <!-- Notes content -->
+                <template x-if="person.notes">
+                  <div class="text-sm text-gray-600 leading-relaxed max-h-80 overflow-y-auto prose-sm"
+                       x-html="renderNotes(person.notes)">
+                  </div>
+                </template>
+                <template x-if="!person.notes">
+                  <div class="text-sm text-gray-400 italic">No notes yet for this person.</div>
+                </template>
+
+                <!-- Actions -->
+                <div class="mt-4 pt-3 border-t border-gray-100 flex gap-2">
+                  <button @click.stop="openEditPerson(person)" class="text-xs bg-gray-50 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">Edit Profile</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Terms Tab -->
+    <div x-show="!loading && activeTab === 'terms'">
+
+      <!-- Empty state -->
+      <div x-show="filteredTerms.length === 0" class="text-center py-20 text-gray-400">
+        <div class="text-4xl mb-3">&#x1F4D6;</div>
+        <div class="text-sm" x-text="search ? 'No terms match your search.' : 'No terms in the knowledge base yet.'"></div>
+        <button x-show="!search" @click="openCreateTerm()" class="mt-4 text-sm text-indigo-600 hover:underline">Add the first term</button>
+      </div>
+
+      <!-- Terms Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template x-for="term in filteredTerms" :key="term.id">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg leading-none">&#x1F4D6;</span>
+                <div>
+                  <span class="font-semibold text-gray-900 text-sm" x-text="term.term"></span>
+                  <span
+                    x-show="term.category"
+                    class="ml-2 text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5"
+                    x-text="term.category">
+                  </span>
+                </div>
+              </div>
+              <!-- Edit button -->
+              <button
+                @click="openEditTerm(term)"
+                class="text-gray-300 hover:text-gray-500 transition-colors p-1 -mt-0.5 -mr-0.5"
+                title="Edit">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6.364-6.364a2 2 0 012.828 2.828L11.828 13.828a4 4 0 01-1.414.94l-3 1 1-3a4 4 0 01.94-1.414L9 11z" />
+                </svg>
+              </button>
+            </div>
+            <p class="mt-2.5 text-sm text-gray-600 leading-relaxed" x-text="term.definition || '—'"></p>
+          </div>
+        </template>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Backdrop -->
+  <div
+    x-show="modalOpen"
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-100"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    @click.self="modalOpen = false"
+    class="fixed inset-0 bg-black/30 z-40 overflow-y-auto">
+
+    <!-- Modal Card -->
+    <div
+      x-show="modalOpen"
+      x-transition:enter="transition ease-out duration-150"
+      x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+      x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+      x-transition:leave="transition ease-in duration-100"
+      x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+      x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+      class="bg-white rounded-xl shadow-xl max-w-md mx-auto mt-24 mb-10 z-50 relative">
+
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900 text-base">
+          <span x-show="modalMode === 'create' && modalType === 'person'">Add Person</span>
+          <span x-show="modalMode === 'edit'   && modalType === 'person'">Edit Person</span>
+          <span x-show="modalMode === 'create' && modalType === 'term'">Add Term</span>
+          <span x-show="modalMode === 'edit'   && modalType === 'term'">Edit Term</span>
+        </h2>
+        <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="px-5 py-4 space-y-4">
+
+        <!-- Person Fields -->
+        <template x-if="modalType === 'person'">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Name <span class="text-red-400">*</span></label>
+              <input
+                type="text"
+                x-model="form.name"
+                placeholder="Full name"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Role</label>
+              <input
+                type="text"
+                x-model="form.role"
+                placeholder="e.g. Publisher Development Lead"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Email</label>
+              <input
+                type="email"
+                x-model="form.email"
+                placeholder="email@example.com"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Aliases</label>
+              <input
+                type="text"
+                x-model="form.aliases"
+                placeholder="Comma-separated, e.g. Casey, Casey W., CW"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition" />
+              <p class="mt-1 text-xs text-gray-400">Used to identify this person in transcripts</p>
+            </div>
+          </div>
+        </template>
+
+        <!-- Term Fields -->
+        <template x-if="modalType === 'term'">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Term <span class="text-red-400">*</span></label>
+              <input
+                type="text"
+                x-model="form.term"
+                placeholder="e.g. Swoop, CPM, PulsePoint"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Definition</label>
+              <textarea
+                x-model="form.definition"
+                rows="3"
+                placeholder="What does this term mean in your context?"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition resize-none">
+              </textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Category</label>
+              <select
+                x-model="form.category"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition bg-white">
+                <option value="">— Select a category —</option>
+                <option value="Project">Project</option>
+                <option value="Acronym">Acronym</option>
+                <option value="Tool">Tool</option>
+                <option value="Company">Company</option>
+              </select>
+            </div>
+          </div>
+        </template>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+        <!-- Delete (edit mode only) -->
+        <button
+          x-show="modalMode === 'edit'"
+          @click="deleteItem()"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+          Delete
+        </button>
+        <div x-show="modalMode === 'create'" class="flex-1"></div>
+
+        <!-- Cancel + Save -->
+        <div class="flex items-center gap-2">
+          <button
+            @click="modalOpen = false"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+            Cancel
+          </button>
+          <button
+            @click="save()"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+            Save
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+    Alpine.data('kb', () => ({
+      activeTab: 'people',
+      people: [],
+      terms: [],
+      search: '',
+      loading: true,
+      teamFilter: null,
+      categoryFilter: null,
+      expandedPersonId: null,
+
+      // Modal state
+      modalOpen: false,
+      modalMode: 'create',   // 'create' | 'edit'
+      modalType: 'person',   // 'person' | 'term'
+      form: { name: '', role: '', email: '', aliases: '', term: '', definition: '', category: '' },
+      editingId: null,
+
+      async init() {
+        await Promise.all([this.fetchPeople(), this.fetchTerms()]);
+        this.loading = false;
+      },
+
+      async fetchPeople() {
+        try {
+          const res = await fetch('/people');
+          if (res.ok) this.people = await res.json();
+        } catch(e) { console.error('Failed to fetch people:', e); }
+      },
+      async fetchTerms() {
+        try {
+          const res = await fetch('/terms');
+          if (res.ok) this.terms = await res.json();
+        } catch(e) { console.error('Failed to fetch terms:', e); }
+      },
+
+      get uniqueTeams() {
+        return [...new Set(this.people.map(p => p.team).filter(Boolean))].sort();
+      },
+      get uniqueCategories() {
+        return [...new Set(this.terms.map(t => t.category).filter(Boolean))].sort();
+      },
+      get filteredPeople() {
+        let result = this.people;
+        if (this.teamFilter) result = result.filter(p => p.team === this.teamFilter);
+        const s = this.search.toLowerCase();
+        if (s) result = result.filter(p =>
+          p.name.toLowerCase().includes(s) ||
+          (p.role || '').toLowerCase().includes(s) ||
+          (p.email || '').toLowerCase().includes(s) ||
+          (p.notes || '').toLowerCase().includes(s)
+        );
+        return result;
+      },
+      get filteredTerms() {
+        let result = this.terms;
+        if (this.categoryFilter) result = result.filter(t => t.category === this.categoryFilter);
+        const s = this.search.toLowerCase();
+        if (s) result = result.filter(t =>
+          t.term.toLowerCase().includes(s) ||
+          (t.definition || '').toLowerCase().includes(s)
+        );
+        return result;
+      },
+
+      renderNotes(text) {
+        if (!text) return '';
+        // Split into sections by double newline
+        const sections = text.split(/\n\n+/);
+        let html = '';
+
+        for (const section of sections) {
+          const lines = section.split('\n');
+          let sectionHtml = '';
+          let inList = false;
+
+          for (const line of lines) {
+            // Section headings like **📋 Background**
+            const headingMatch = line.match(/^\*\*(.+)\*\*$/);
+            if (headingMatch) {
+              if (inList) { sectionHtml += '</ul>'; inList = false; }
+              const heading = headingMatch[1]
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              sectionHtml += `<div class="text-xs font-semibold text-gray-800 uppercase tracking-wider mt-4 mb-1.5 first:mt-0">${heading}</div>`;
+              continue;
+            }
+
+            // Bullet items
+            const bulletMatch = line.match(/^- (.+)$/);
+            if (bulletMatch) {
+              if (!inList) { sectionHtml += '<ul class="space-y-1 mb-2">'; inList = true; }
+              let item = bulletMatch[1]
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              // Render inline markdown
+              item = item.replace(/\*\*(.+?)\*\*/g, '<strong class="font-medium text-gray-800">$1</strong>');
+              item = item.replace(/`([^`]+)`/g, '<code class="text-xs bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
+              // Highlight dates like (02-24) or (03-05)
+              item = item.replace(/\((\d{2}-\d{2})\)/g, '<span class="text-xs text-indigo-500 font-medium">($1)</span>');
+              item = item.replace(/\((\d{2}-\d{2},\s*\w+)/g, '<span class="text-xs text-indigo-500 font-medium">($1</span>');
+              sectionHtml += `<li class="text-sm text-gray-600 leading-relaxed pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-indigo-400 before:font-bold">${item}</li>`;
+              continue;
+            }
+
+            // Plain text (rare with structured notes)
+            if (line.trim()) {
+              if (inList) { sectionHtml += '</ul>'; inList = false; }
+              let plain = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              plain = plain.replace(/\*\*(.+?)\*\*/g, '<strong class="font-medium text-gray-800">$1</strong>');
+              plain = plain.replace(/`([^`]+)`/g, '<code class="text-xs bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded">$1</code>');
+              sectionHtml += `<p class="text-sm text-gray-600 mt-1">${plain}</p>`;
+            }
+          }
+          if (inList) sectionHtml += '</ul>';
+          html += sectionHtml;
+        }
+
+        return html || '<span class="text-gray-400 italic">No notes available.</span>';
+      },
+
+      openCreatePerson() {
+        this.modalType = 'person';
+        this.modalMode = 'create';
+        this.form = { name: '', role: '', email: '', aliases: '', term: '', definition: '', category: '' };
+        this.editingId = null;
+        this.modalOpen = true;
+      },
+      openCreateTerm() {
+        this.modalType = 'term';
+        this.modalMode = 'create';
+        this.form = { name: '', role: '', email: '', aliases: '', term: '', definition: '', category: '' };
+        this.editingId = null;
+        this.modalOpen = true;
+      },
+      openEditPerson(p) {
+        this.modalType = 'person';
+        this.modalMode = 'edit';
+        this.form = { name: p.name, role: p.role || '', email: p.email || '', aliases: (p.aliases || []).join(', '), term: '', definition: '', category: '' };
+        this.editingId = p.id;
+        this.modalOpen = true;
+      },
+      openEditTerm(t) {
+        this.modalType = 'term';
+        this.modalMode = 'edit';
+        this.form = { name: '', role: '', email: '', aliases: '', term: t.term, definition: t.definition || '', category: t.category || '' };
+        this.editingId = t.id;
+        this.modalOpen = true;
+      },
+
+      async save() {
+        if (this.modalType === 'person') {
+          const body = {
+            name: this.form.name,
+            role: this.form.role || null,
+            email: this.form.email || null,
+            aliases: this.form.aliases
+              ? this.form.aliases.split(',').map(a => a.trim()).filter(Boolean)
+              : []
+          };
+          if (this.modalMode === 'create') {
+            await fetch('/people', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          } else {
+            await fetch(`/people/${this.editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          }
+          await this.fetchPeople();
+        } else {
+          const body = {
+            term: this.form.term,
+            definition: this.form.definition || null,
+            category: this.form.category || null
+          };
+          if (this.modalMode === 'create') {
+            await fetch('/terms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          } else {
+            await fetch(`/terms/${this.editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          }
+          await this.fetchTerms();
+        }
+        this.modalOpen = false;
+      },
+
+      async deleteItem() {
+        if (!confirm('Are you sure you want to delete this?')) return;
+        const url = this.modalType === 'person'
+          ? `/people/${this.editingId}`
+          : `/terms/${this.editingId}`;
+        await fetch(url, { method: 'DELETE' });
+        this.modalType === 'person'
+          ? await this.fetchPeople()
+          : await this.fetchTerms();
+        this.modalOpen = false;
+      },
+
+      avatarColor(name) {
+        const colors = [
+          ['bg-indigo-100', 'text-indigo-600'],
+          ['bg-pink-100',   'text-pink-600'],
+          ['bg-emerald-100','text-emerald-600'],
+          ['bg-amber-100',  'text-amber-600'],
+          ['bg-sky-100',    'text-sky-600'],
+          ['bg-purple-100', 'text-purple-600'],
+        ];
+        let hash = 0;
+        for (const c of name) hash = ((hash << 5) - hash) + c.charCodeAt(0);
+        return colors[Math.abs(hash) % colors.length];
+      },
+      initials(name) {
+        return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      },
+    }));
+    });
+  </script>
+
+</body>
+</html>
