@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from google.oauth2.credentials import Credentials
