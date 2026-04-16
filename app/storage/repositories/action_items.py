@@ -10,24 +10,18 @@ class ActionItemRepository:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
-    async def list_all(self, status: str | None = None) -> list[ActionItem]:
-        query = select(ActionItem).order_by(ActionItem.created_at.desc())
-        if status:
-            query = query.where(ActionItem.status == status)
+    async def list_all(self, done: bool | None = None) -> list[ActionItem]:
+        query = select(ActionItem).order_by(ActionItem.id.desc())
+        if done is not None:
+            query = query.where(ActionItem.done == done)
         result = await self.session.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
-    async def update_status(self, item_id: str, status: str) -> ActionItem | None:
+    async def toggle_done(self, item_id: int, done: bool) -> ActionItem | None:
         item = await self.session.get(ActionItem, item_id)
         if not item:
             return None
-        item.status = status
-        await self.session.commit()
-        await self.session.refresh(item)
-        return item
-
-    async def save(self, item: ActionItem) -> ActionItem:
-        self.session.add(item)
+        item.done = done
         await self.session.commit()
         await self.session.refresh(item)
         return item
